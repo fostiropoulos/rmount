@@ -21,8 +21,7 @@ jobs:
         sudo chmod 755 rmount/rclone
     - name: Install dependencies
       run: |
-        pip install .
-        pip install pytest
+        pip install .[dev]
     - name: Test with pytest
       run: |
         make test
