@@ -15,7 +15,7 @@ jobs:
         python-version: '3.10'
     - name: package install
       run: |
-        mv linux/rclone rmount/rclone
+        cp linux/rclone rmount/rclone
     - name: Update permissions
       run: |
         sudo chmod 755 rmount/rclone
