@@ -22,7 +22,6 @@ import pytest
 
 from rmount import RemoteMount, main
 from rmount.utils import unmount
-from tests.conftest import _remote_server, _rmount
 
 main.HEARTBEAT_ERROR_COUNT = 2
 main.MISSED_HEARTBEATS_ERROR = 2
@@ -168,7 +167,7 @@ def test_interupt_upload(rmount: RemoteMount, remote_server: "RemoteServer"):
 
 
 if __name__ == "__main__":
-    from tests.conftest import RemoteServer, _config
+    from tests.conftest import RemoteServer, _config, _remote_server, _rmount
 
     """
     # NOTE to test the connection to the mock server use:
