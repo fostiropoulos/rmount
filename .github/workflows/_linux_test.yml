@@ -15,10 +15,10 @@ jobs:
         python-version: '3.10'
     - name: package install
       run: |
-        mv linux/rclone pyrclone/rclone
+        mv linux/rclone rmount/rclone
     - name: Update permissions
       run: |
-        sudo chmod 755 pyrclone/rclone
+        sudo chmod 755 rmount/rclone
     - name: Install dependencies
       run: |
         pip install .
