@@ -1,0 +1,2 @@
+global-exclude mac
+global-exclude linux
