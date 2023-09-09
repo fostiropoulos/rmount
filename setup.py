@@ -10,11 +10,6 @@ if os.name == "posix":  # Unix-like
             "linux/rclone",
             (Path(__file__).parent / "rmount" / "rclone").as_posix(),
         )
-    elif os.uname().sysname == "Darwin":
-        shutil.copy(
-            "mac/rclone",
-            (Path(__file__).parent / "rmount" / "rclone").as_posix(),
-        )
 else:
     raise NotImplementedError("Unsupported OS")
 
@@ -27,7 +22,7 @@ setuptools.setup(
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/fostiropoulos/rmount",
-    packages=setuptools.find_packages(exclude=("mac", "linux")),
+    packages=setuptools.find_packages(exclude=("linux")),
     include_package_data=True,
     package_data={
         "": ["rclone"],

@@ -32,29 +32,3 @@ jobs:
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-
-
-  build_and_publish_mac:
-      runs-on: macos-latest
-      steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v3
-        with:
-          python-version: '3.10'
-      - name: Dependencies
-        run: |
-          pip install wheel twine
-      - name: Add Rclone Binary File
-        run: |
-          cp mac/rclone rmount/rclone
-      - name: Update Permissions
-        run: |
-          sudo chmod 755 rmount/rclone
-      - name: Build And Package for Mac
-        run: |
-          make publish OS="macosx_10_9_x86_64"
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-
