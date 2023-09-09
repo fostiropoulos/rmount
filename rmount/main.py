@@ -407,7 +407,8 @@ class RemoteMount:
     timeout : int, optional
         The timeout after which many of the processes and functions
         will raise an error, by default ``TIMEOUT = 30``
-
+    verbose : bool, optional
+        Whether to print `rclone` logs to console, by default ``False``
     Raises
     ------
     NotImplementedError
@@ -421,6 +422,7 @@ class RemoteMount:
         local_path: Path | str,
         refresh_interval_s: int = 10,
         timeout: int = TIMEOUT,
+        verbose: bool = False
     ):
         if sys.platform == WINDOWS_NAME:
             raise NotImplementedError("RemoteMount not supported for Windows. ")
@@ -428,11 +430,11 @@ class RemoteMount:
         self.remote_path: Path = Path(remote_path)
         self._refresh_interval: int = refresh_interval_s
         self._timeout: int = timeout
-        self._verbose: bool = False
+        self._verbose: bool = verbose
         self._heart: Process | None = None
         self._is_alive: Event = mp.Event()
         self.__settings = dataclasses.asdict(settings)
-        self._config_path: Path = self.__write_settings()
+        self._config_path: Path | None = None
 
     def mount(self):  # noqa: DOC502
         """
@@ -452,6 +454,7 @@ class RemoteMount:
         RuntimeError
             When the mount process dies with an irrecoverable error.
         """
+        self._config_path = self.__write_settings()
         lock = mp.Lock()
         lock.acquire(block=True, timeout=self._timeout)
         self._is_alive.set()
@@ -565,12 +568,13 @@ class RemoteMount:
 
     def __exit__(self, *args, **kwargs):
         self.unmount()
-        if self._config_path.exists():
+        if self._config_path is not None and self._config_path.exists():
             self._config_path.unlink()
 
     def __del__(self):
         try:
-            self._config_path.unlink()
+            if self._config_path is not None:
+                self._config_path.unlink()
             self.unmount()
         except Exception:  # pylint: disable=broad-exception-caught
             pass
