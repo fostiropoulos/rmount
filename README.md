@@ -10,6 +10,14 @@ This is a robust remote mount wrapper around the mount utility [rclone](https://
 * Remote SSH, i.e. for your own private server with SSH access
 * S3 remote file-systems are supported by several cloud providers [listed below](#providers).
 
+### System Requirements
+
+1. `mountpoint` command should be in PATH
+2. `fusermount` command should be in PATH
+3. System support for FUSE file system
+
+The above requirements are by default met on most Linux distributions such as Ubuntu.
+
 ## Install
 
 `pip install rmount`
@@ -81,6 +89,9 @@ $ pip install -e .[dev]
 $ make test
 ```
 
+Currently there is no support for Mac or Windows as they require multiple additional steps to install mount. It is not viable for the [main developer of this project](https://iordanis.me) to support these systems. If you are interested in writing code to support additional OS. You should find a way to replace the command line utility depedencies listed above.
+
+`mountpoint` command checks whether a directory is a mount point and `fusermount` command unmounts a directory. As long as robust alternatives can be found and packaged in this repo or documentation provided for them it should be sufficient for the same library to work on any OS. Additionally, the OS must support FUSE filesystem, e.g. [WinFsp](https://winfsp.dev/) or [macFUSE](https://osxfuse.github.io/).
 
 ## <a name="providers"></a> S3 Remote Storage Providers
 

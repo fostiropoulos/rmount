@@ -1,6 +1,4 @@
-"""
-Utilities, globals and helper functions for ``RemoteMount``
-"""
+"""Utilities, globals and helper functions for ``RemoteMount``."""
 # pylint: disable=missing-function-docstring
 import logging
 import multiprocessing
@@ -19,6 +17,9 @@ TIMEOUT = 30
 
 RCLONE_PATH: Path = Path(__file__).parent.joinpath("rclone")
 
+# initialization flag that checks for depedencies only once.
+_IS_INIT = False
+
 
 def _parse_args(args: tuple[typing.Any, ...]) -> list[str]:
     parsed_args = [str(arg) for arg in args]
@@ -29,8 +30,8 @@ def _parse_args(args: tuple[typing.Any, ...]) -> list[str]:
 def _handle_pipe(pipe, verbose: bool):
     with pipe:
         while True:
-            msg = pipe.readline().decode().strip("\n")
-            if verbose:
+            msg = pipe.readline().decode().strip("\n").strip(" ")
+            if verbose and len(msg) > 0:
                 logger.error(msg)
 
 
@@ -163,3 +164,27 @@ def refresh(remote_path: Path, config_path: Path, timeout: int):
         "vfs/refresh",
         timeout=timeout,
     )
+
+
+def _requirements_installed():
+    mountpoint_flag = False
+    local_dir = Path(__file__).parent
+    try:
+        message, _ = _execute("mountpoint", local_dir, timeout=5)
+        mountpoint_flag = message.strip("\n").endswith("is a mountpoint")
+    except Exception as exc:
+        raise ImportError("Could not execute or find the `mountpoint` command") from exc
+    if mountpoint_flag:
+        raise ImportError("`mountpoint` must be misconfigured")
+
+    try:
+        _execute("fusermount", "-uz", f"{local_dir}", timeout=5)
+    except Exception as exc:
+        raise ImportError("Could not execute or find the `fusermount` command") from exc
+    if is_mounted(local_dir, timeout=5):
+        raise ImportError("`fusermount` must be misconfigured")
+    return True
+
+
+if not _IS_INIT and _requirements_installed():
+    _IS_INIT = True
