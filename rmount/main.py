@@ -8,7 +8,6 @@ import multiprocessing as mp
 import os
 import signal
 import subprocess
-import sys
 import tempfile
 import threading
 import time
@@ -35,7 +34,6 @@ logger.setLevel(logging.INFO)
 HEARTBEAT_ERROR_COUNT = 5
 MISSED_HEARTBEATS_ERROR = 5
 MOUNT_CALLBACK_ERROR_COUNT = 5
-WINDOWS_NAME = "win32"
 
 
 def _mount_callback(  # noqa:DOC201
@@ -422,10 +420,12 @@ class RemoteMount:
         local_path: Path | str,
         refresh_interval_s: int = 10,
         timeout: int = TIMEOUT,
-        verbose: bool = False
+        verbose: bool = False,
     ):
-        if sys.platform == WINDOWS_NAME:
-            raise NotImplementedError("RemoteMount not supported for Windows. ")
+        if os.name.lower() != "posix":
+            raise NotImplementedError(
+                f"RemoteMount not supported for your platform `{os.name}`"
+            )
         self.local_path: Path = Path(local_path)
         self.remote_path: Path = Path(remote_path)
         self._refresh_interval: int = refresh_interval_s
