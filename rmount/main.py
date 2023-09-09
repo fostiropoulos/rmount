@@ -34,6 +34,7 @@ logger.setLevel(logging.INFO)
 HEARTBEAT_ERROR_COUNT = 5
 MISSED_HEARTBEATS_ERROR = 5
 MOUNT_CALLBACK_ERROR_COUNT = 5
+LINUX_NAME = "posix"
 
 
 def _mount_callback(  # noqa:DOC201
@@ -422,7 +423,7 @@ class RemoteMount:
         timeout: int = TIMEOUT,
         verbose: bool = False,
     ):
-        if os.name.lower() != "posix":
+        if os.name.lower() != LINUX_NAME:
             raise NotImplementedError(
                 f"RemoteMount not supported for your platform `{os.name}`"
             )
