@@ -2,6 +2,7 @@
 # pylint: disable=missing-function-docstring
 import logging
 import multiprocessing
+import re
 import subprocess
 import tempfile
 import time
@@ -9,6 +10,11 @@ import traceback
 import typing
 from pathlib import Path
 
+logging.basicConfig(
+    format="%(asctime)s %(levelname)-5s [%(filename)s:%(lineno)d] %(message)s",
+    datefmt="%Y-%m-%d:%H:%M:%S",
+    level=logging.WARN,
+)
 logger = logging.getLogger("RMount")
 
 CFG_NAME = "RMount"
@@ -19,12 +25,21 @@ RCLONE_PATH: Path = Path(__file__).parent.joinpath("rclone")
 
 # initialization flag that checks for depedencies only once.
 _IS_INIT = False
+log_re = re.compile("[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} ")
 
 
 def _parse_args(args: tuple[typing.Any, ...]) -> list[str]:
     parsed_args = [str(arg) for arg in args]
-    logger.debug("Invoking : %s", " ".join(parsed_args))
+    logger.debug("Invoking: %s", " ".join(parsed_args))
     return parsed_args
+
+
+def _clean_log_msg(msg: str):
+    _, msg = re.split(
+        log_re,
+        msg,
+    )
+    return msg
 
 
 def _handle_pipe(pipe, verbose: bool):
@@ -32,7 +47,8 @@ def _handle_pipe(pipe, verbose: bool):
         while True:
             msg = pipe.readline().decode().strip("\n").strip(" ")
             if verbose and len(msg) > 0:
-                logger.error(msg)
+                msg = _clean_log_msg(msg)
+                logger.debug("RClone: %s", msg)
 
 
 def parse_pipes(
@@ -104,13 +120,14 @@ def mount(
         remote_path,
         local_path,
         "--vfs-cache-mode",
-        "writes",
+        "off",
         "--allow-non-empty",
         "--poll-interval",
         f"{refresh_interval:d}s",
         "--vfs-cache-poll-interval",
         f"{refresh_interval:d}s",
         "--rc",
+        "--rc-no-auth",
         "-vvvv",
     ]
     return _execute_async(*command_with_args)
@@ -123,7 +140,8 @@ def is_mounted(local_path, timeout: int):
         mountpoint_flag = message.strip("\n").endswith("is a mountpoint")
     except Exception:  # pylint: disable=broad-exception-caught
         exc = traceback.format_exc()
-        logger.error(exc)
+        logger.error("Error calling `mountpoint` command: %s", message)
+        logger.debug(exc)
     return mountpoint_flag
 
 
@@ -141,6 +159,7 @@ def write_timestamp(remote_path: Path, config_path: Path, timeout: int):
     with tempfile.NamedTemporaryFile() as file:
         file.write(f"{time.time()}\n".encode("utf-8"))
         file.flush()
+
         stdout, stderr = _execute(
             RCLONE_PATH,
             "copyto",
@@ -150,20 +169,40 @@ def write_timestamp(remote_path: Path, config_path: Path, timeout: int):
             config_path,
             timeout=timeout,
         )
+
         if len(stdout) > 0:
             logger.info(stdout)
         if len(stderr) > 0:
-            logger.warning(stderr)
+            logger.warning("RClone Log: %s", stderr.strip("\n").strip(" "))
+
+
+def refresh_cache(timeout: int):
+    try:
+        _execute(
+            RCLONE_PATH,
+            "rc",
+            "vfs/refresh",
+            timeout=timeout,
+        )
+    except:  # pylint: disable=bare-except
+        pass
+
+
+def terminate():
+    try:
+        _execute(
+            RCLONE_PATH,
+            "rc",
+            "core/quit",
+            timeout=1,
+        )
+    except:  # pylint: disable=bare-except
+        pass
 
 
 def refresh(remote_path: Path, config_path: Path, timeout: int):
     write_timestamp(remote_path=remote_path, config_path=config_path, timeout=timeout)
-    _execute(
-        RCLONE_PATH,
-        "rc",
-        "vfs/refresh",
-        timeout=timeout,
-    )
+    refresh_cache(timeout=timeout)
 
 
 def _requirements_installed():
