@@ -27,7 +27,7 @@ load-plugins = pylint.extensions.bad_builtin,
                pylint.extensions.set_membership,
                pylint.extensions.typing,
 
-max-args = 8
+max-args = 9
 max-attributes=12
 
 [STRING_CONSTANT]
