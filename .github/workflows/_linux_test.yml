@@ -1,0 +1,14 @@
+name: linux-test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: [self-hosted, ubuntu]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build Docker and run test
+      run: |
+        make test
