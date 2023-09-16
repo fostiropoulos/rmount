@@ -30,7 +30,9 @@ DOCKER_CONTAINER_NAME = "rmount-test-server"
 def docker_kill_running_containers(
     docker_client: docker.DockerClient, container_name: str
 ):
-    for c in docker_client.api.containers(filters={"name": container_name}):
+    for c in docker_client.api.containers(
+        filters={"name": container_name}
+    ):
         docker_client.api.kill(c)
     for i in range(10):
         try:
@@ -125,7 +127,9 @@ def _remote_server(
         remote_path = tmp_path.joinpath("remote_path")
     if volume_mountpoint is None:
         volume_mountpoint = remote_path
-    return RemoteServer(pub_key, remote_path, volume_mountpoint=volume_mountpoint)
+    return RemoteServer(
+        pub_key, remote_path, volume_mountpoint=volume_mountpoint
+    )
 
 
 def pytest_addoption(parser):
@@ -163,7 +167,10 @@ def config(tmp_path, remote_server: "RemoteServer"):
 
 class RemoteServer:
     def __init__(
-        self, public_key: str, volume_path: Path | str, volume_mountpoint: Path | str
+        self,
+        public_key: str,
+        volume_path: Path | str,
+        volume_mountpoint: Path | str,
     ) -> None:
         self.public_key = public_key
         self.volume_path = Path(volume_path)
@@ -175,10 +182,10 @@ class RemoteServer:
             self.client = docker.from_env()
         except Exception as e:
             raise RuntimeError(
-                "Could not find a docker installation. Please make sure"
-                " docker is in Path and can run be run by the current"
-                " system user (non-root) e.g. `docker run hello-world`."
-                " Please refer to"
+                "Could not find a docker installation. Please make"
+                " sure docker is in Path and can run be run by the"
+                " current system user (non-root) e.g. `docker run"
+                " hello-world`. Please refer to"
                 " https://github.com/fostiropoulos/rmount/blob/main/DEVELOPER.md"
                 " for detailed instructions."
             ) from e
@@ -195,7 +202,9 @@ class RemoteServer:
         return self
 
     def kill(self):
-        docker_kill_running_containers(self.client, self.container_name)
+        docker_kill_running_containers(
+            self.client, self.container_name
+        )
 
     def start(self):
         self.img = docker_run_cmd(
@@ -205,6 +214,6 @@ class RemoteServer:
             self.volume_mountpoint,
             container_name=self.container_name,
         )
-        self.ip_address = self.client.containers.get(self.img.id).attrs[
-            "NetworkSettings"
-        ]["IPAddress"]
+        self.ip_address = self.client.containers.get(
+            self.img.id
+        ).attrs["NetworkSettings"]["IPAddress"]

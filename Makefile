@@ -26,7 +26,7 @@ install:
 
 .ONESHELL:
 static-checks:
-	black . --check
+	black . --check --preview --line-length 70
 	flake8 rmount
 	pylint ./rmount
 	mypy rmount

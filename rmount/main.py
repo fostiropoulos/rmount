@@ -92,7 +92,9 @@ def is_alive(local_path: Path, timeout: int) -> bool:
             # we do an _is_init check because if we try to access the
             # filesystem before being ready, we can interrupt the process.
             if local_path.joinpath(".rmount").exists():
-                last_alive = float(local_path.joinpath(".rmount").read_text())
+                last_alive = float(
+                    local_path.joinpath(".rmount").read_text()
+                )
                 file_flag = time.time() - last_alive < timeout * 2
                 logger.debug("Mountpoint last alive: %s", last_alive)
         except Exception:  # pylint: disable=broad-exception-caught
@@ -100,7 +102,11 @@ def is_alive(local_path: Path, timeout: int) -> bool:
             logger.error(exc)
 
         mountpoint_flag = is_mounted(local_path, timeout=timeout)
-        logger.debug("Mountpoint (active, valid): (%s,%s)", mountpoint_flag, file_flag)
+        logger.debug(
+            "Mountpoint (active, valid): (%s,%s)",
+            mountpoint_flag,
+            file_flag,
+        )
         queue.put(mountpoint_flag and file_flag)
 
     queue: Queue = Queue()
@@ -178,7 +184,11 @@ def _heartbeat(  # noqa:DOC501
             # the process is dead.
             alive_timeout = max(timeout, refresh_interval)
 
-            refresh(mount_process.remote_path, config_path, timeout=timeout)
+            refresh(
+                mount_process.remote_path,
+                config_path,
+                timeout=timeout,
+            )
             _alive = is_alive(local_path, timeout=alive_timeout)
             if not _alive and error_count >= RESTART_ERROR:
                 raise TimeoutError("Mount process is dead.")
@@ -207,7 +217,9 @@ def _heartbeat(  # noqa:DOC501
                 # The process is not exiting gracefully
                 terminate_event.clear()
                 return
-            except Exception:  # pylint: disable=broad-exception-caught
+            except (
+                Exception  # pylint: disable=broad-exception-caught
+            ):
                 exc = traceback.format_exc()
                 logger.error("Error during heartbeat error-callback.")
                 logger.debug(exc)
@@ -292,11 +304,15 @@ class _MountProcess:
         # refresh writes a timestamped file to the remote. Fails early if the
         # configuration is invalid.
         try:
-            refresh(self.remote_path, self.config_path, timeout=self._timeout)
+            refresh(
+                self.remote_path,
+                self.config_path,
+                timeout=self._timeout,
+            )
         except Exception as exc:
             raise RuntimeError(
-                f"Could not connect to remote {self.remote_path}. Make"
-                " sure your configuration is correct."
+                f"Could not connect to remote {self.remote_path}."
+                " Make sure your configuration is correct."
             ) from exc
 
         # we unmount the directory just in case.
@@ -322,11 +338,15 @@ class _MountProcess:
                 args=(self.local_path, timeout, is_alive_event),
             )
             mt_c.start()
-            _call_back_timeout = timeout * (MOUNT_CALLBACK_ERROR_COUNT + 1) * 2
+            _call_back_timeout = (
+                timeout * (MOUNT_CALLBACK_ERROR_COUNT + 1) * 2
+            )
             for _ in range(_call_back_timeout):
                 if is_alive_event.wait(timeout=1):
                     return
-                if not mt_c.is_alive() and not is_alive_event.wait(timeout=1):
+                if not mt_c.is_alive() and not is_alive_event.wait(
+                    timeout=1
+                ):
                     break
             self.error_callback()
 
@@ -359,9 +379,14 @@ class _MountProcess:
             timeout = self._timeout
         if self._remount_err_count >= HEARTBEAT_ERROR_COUNT:
             unmount(self.local_path, timeout=timeout)
-            error_msg = f"Failed to mount {HEARTBEAT_ERROR_COUNT} times in a row."
+            error_msg = (
+                f"Failed to mount {HEARTBEAT_ERROR_COUNT} times in a"
+                " row."
+            )
             raise OSError(error_msg)
-        _error_timeout = timeout * (MOUNT_CALLBACK_ERROR_COUNT + 3) * 2
+        _error_timeout = (
+            timeout * (MOUNT_CALLBACK_ERROR_COUNT + 3) * 2
+        )
         if time.time() - self._last_error_time < _error_timeout:
             # error happened within the time it takes for the mount_callback
             # to terminate
@@ -450,7 +475,8 @@ class RemoteMount:
     ):
         if os.name.lower() != LINUX_NAME:
             raise NotImplementedError(
-                f"RemoteMount not supported for your platform `{os.name}`"
+                "RemoteMount not supported for your platform"
+                f" `{os.name}`"
             )
         self.local_path: Path = Path(local_path)
         self.remote_path: Path = Path(remote_path)
@@ -609,7 +635,10 @@ class RemoteMount:
 
     def __exit__(self, *args, **kwargs):
         self.unmount()
-        if self._config_path is not None and self._config_path.exists():
+        if (
+            self._config_path is not None
+            and self._config_path.exists()
+        ):
             self._config_path.unlink()
 
     def __del__(self):

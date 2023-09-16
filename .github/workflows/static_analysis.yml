@@ -62,4 +62,4 @@ jobs:
           pip install -e .[dev] -v
       - name: Check formatting with black
         run: |
-          black --check .
+          black --check --preview .

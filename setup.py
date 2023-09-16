@@ -22,7 +22,7 @@ setuptools.setup(
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/fostiropoulos/rmount",
-    packages=setuptools.find_packages(exclude=("linux")),
+    packages=setuptools.find_packages(exclude="linux"),
     include_package_data=True,
     package_data={
         "": ["rclone"],

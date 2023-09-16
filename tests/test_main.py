@@ -51,7 +51,9 @@ def _assert_with_timeout(fn):
     assert False
 
 
-def test_mount_remount(rmount: RemoteMount, remote_server: "RemoteServer"):
+def test_mount_remount(
+    rmount: RemoteMount, remote_server: "RemoteServer"
+):
     """Tests whether the storage is persistent between mounts / unmounts."""
     local_path = rmount.local_path
     remote_path = rmount.remote_path
@@ -60,10 +62,12 @@ def test_mount_remount(rmount: RemoteMount, remote_server: "RemoteServer"):
     remote_bytes = write_bytes(rfile)
     local_bytes = write_bytes(lfile)
     _assert_with_timeout(
-        lambda: remote_path.joinpath("local.txt").read_bytes() == local_bytes
+        lambda: remote_path.joinpath("local.txt").read_bytes()
+        == local_bytes
     )
     _assert_with_timeout(
-        lambda: local_path.joinpath("remote.txt").read_bytes() == remote_bytes
+        lambda: local_path.joinpath("remote.txt").read_bytes()
+        == remote_bytes
     )
 
     rmount.unmount()
@@ -74,10 +78,12 @@ def test_mount_remount(rmount: RemoteMount, remote_server: "RemoteServer"):
 
     rmount.mount()
     _assert_with_timeout(
-        lambda: local_path.joinpath("local.txt").read_bytes() == local_bytes
+        lambda: local_path.joinpath("local.txt").read_bytes()
+        == local_bytes
     )
     _assert_with_timeout(
-        lambda: local_path.joinpath("remote.txt").read_bytes() == remote_bytes
+        lambda: local_path.joinpath("remote.txt").read_bytes()
+        == remote_bytes
     )
     # test that the existing file "test.txt" is no longer accessible
     _assert_with_timeout(lambda: not p.exists())
@@ -86,7 +92,9 @@ def test_mount_remount(rmount: RemoteMount, remote_server: "RemoteServer"):
     _assert_with_timeout(lambda: p.read_bytes() == test_bytes)
 
 
-def test_reconnection(rmount: RemoteMount, remote_server: "RemoteServer"):
+def test_reconnection(
+    rmount: RemoteMount, remote_server: "RemoteServer"
+):
     """Tests what happens when the connection between rmount and a remote
     suddenly drops but is then restored."""
     assert rmount.is_alive()
@@ -100,7 +108,9 @@ def test_reconnection(rmount: RemoteMount, remote_server: "RemoteServer"):
     assert False
 
 
-def test_connection_drop(rmount: RemoteMount, remote_server: "RemoteServer"):
+def test_connection_drop(
+    rmount: RemoteMount, remote_server: "RemoteServer"
+):
     """Tests what happens when the connection between rmount and a remote
     suddenly drops."""
     rmount.unmount()
@@ -134,11 +144,15 @@ def test_connection_drop(rmount: RemoteMount, remote_server: "RemoteServer"):
     assert is_dead.is_set()
 
 
-def test_no_remote(rmount: RemoteMount, remote_server: "RemoteServer"):
+def test_no_remote(
+    rmount: RemoteMount, remote_server: "RemoteServer"
+):
     """Tests what happens when trying to connect to an invalid remote."""
     rmount.unmount()
     remote_server.kill()
-    with pytest.raises(RuntimeError, match="Could not mount on time."):
+    with pytest.raises(
+        RuntimeError, match="Could not mount on time."
+    ):
         rmount.mount()
 
 
@@ -150,7 +164,9 @@ def test_context(rmount: RemoteMount, remote_server: "RemoteServer"):
     assert not rmount.is_alive()
 
 
-def test_interupt_upload(rmount: RemoteMount, remote_server: "RemoteServer"):
+def test_interupt_upload(
+    rmount: RemoteMount, remote_server: "RemoteServer"
+):
     write_lock = multiprocessing.Lock()
 
     n_files = 3
@@ -172,7 +188,9 @@ def test_interupt_upload(rmount: RemoteMount, remote_server: "RemoteServer"):
         unmount(rmount.local_path, timeout=rmount._timeout)
 
     q = multiprocessing.Queue()
-    slow_kill = multiprocessing.Process(target=delayed_unmount, args=(q, write_lock))
+    slow_kill = multiprocessing.Process(
+        target=delayed_unmount, args=(q, write_lock)
+    )
     slow_kill.start()
     n_numbers = 10_000_000
     # should be around 100MB of files
@@ -181,24 +199,32 @@ def test_interupt_upload(rmount: RemoteMount, remote_server: "RemoteServer"):
             if not write_lock.acquire(block=True, timeout=1):
                 break
             name = f"{random.randint(0,n_files):02d}"
-            data = bytes(random.randint(n_numbers - 1, n_numbers * 10))
+            data = bytes(
+                random.randint(n_numbers - 1, n_numbers * 10)
+            )
             rmount.local_path.joinpath(name).write_bytes(data)
             write_lock.release()
             time.sleep(0.1)
-        except:
+        except:  # noqa: E722
             pass
     ints_1 = q.get()
     ints_2 = [
-        rmount.remote_path.joinpath(f"{i:02d}").read_bytes() for i in range(n_files)
+        rmount.remote_path.joinpath(f"{i:02d}").read_bytes()
+        for i in range(n_files)
     ]
 
-    assert all(ints_1[i] == ints_2[i] for i in range(n_files)) and all(
-        ints_2[0] != ints_2[i] for i in range(1, n_files)
-    )
+    assert all(
+        ints_1[i] == ints_2[i] for i in range(n_files)
+    ) and all(ints_2[0] != ints_2[i] for i in range(1, n_files))
 
 
 if __name__ == "__main__":
-    from tests.conftest import RemoteServer, _config, _remote_server, _rmount
+    from tests.conftest import (
+        RemoteServer,
+        _config,
+        _remote_server,
+        _rmount,
+    )
 
     logger.setLevel(logging.DEBUG)
     """
