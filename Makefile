@@ -7,7 +7,7 @@ test:
 	--opt o=uid=0 \
 	rmount-test-volume
 	docker build . --tag rmount-test-image
-	docker run --rm -it -v \
+	docker run --rm -v \
       /var/run/docker.sock:/var/run/docker.sock \
 	  -v rmount-test-volume:/tmp \
 	  --volume /etc/fuse.conf:/etc/fuse.conf:ro \
