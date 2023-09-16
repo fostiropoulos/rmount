@@ -184,7 +184,7 @@ def refresh_cache(timeout: int):
             "vfs/refresh",
             timeout=timeout,
         )
-    except:  # pylint: disable=bare-except
+    except:  # pylint: disable=bare-except # noqa : E722
         pass
 
 
@@ -196,7 +196,7 @@ def terminate():
             "core/quit",
             timeout=1,
         )
-    except:  # pylint: disable=bare-except
+    except:  # pylint: disable=bare-except # noqa : E722
         pass
 
 
