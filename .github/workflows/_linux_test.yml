@@ -6,22 +6,9 @@ on:
 
 jobs:
   pytest:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ubuntu]
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
-      with:
-        python-version: '3.10'
-    - name: package install
-      run: |
-        cp linux/rclone rmount/rclone
-    - name: Update permissions
-      run: |
-        sudo chmod 755 rmount/rclone
-    - name: Install dependencies
-      run: |
-        pip install .[dev]
-    - name: Test with pytest
+    - name: Build Docker and run test
       run: |
         make test
