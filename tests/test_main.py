@@ -21,6 +21,7 @@ from pathlib import Path
 import pytest
 
 from rmount import RemoteMount, main
+from rmount.server import RemoteServer
 from rmount.utils import terminate, unmount
 
 main.HEARTBEAT_ERROR_COUNT = 2
@@ -52,7 +53,7 @@ def _assert_with_timeout(fn):
 
 
 def test_mount_remount(
-    rmount: RemoteMount, remote_server: "RemoteServer"
+    rmount: RemoteMount, remote_server: RemoteServer
 ):
     """Tests whether the storage is persistent between mounts / unmounts."""
     local_path = rmount.local_path
@@ -93,7 +94,7 @@ def test_mount_remount(
 
 
 def test_reconnection(
-    rmount: RemoteMount, remote_server: "RemoteServer"
+    rmount: RemoteMount, remote_server: RemoteServer
 ):
     """Tests what happens when the connection between rmount and a remote
     suddenly drops but is then restored."""
@@ -109,7 +110,7 @@ def test_reconnection(
 
 
 def test_connection_drop(
-    rmount: RemoteMount, remote_server: "RemoteServer"
+    rmount: RemoteMount, remote_server: RemoteServer
 ):
     """Tests what happens when the connection between rmount and a remote
     suddenly drops."""
@@ -144,9 +145,7 @@ def test_connection_drop(
     assert is_dead.is_set()
 
 
-def test_no_remote(
-    rmount: RemoteMount, remote_server: "RemoteServer"
-):
+def test_no_remote(rmount: RemoteMount, remote_server: RemoteServer):
     """Tests what happens when trying to connect to an invalid remote."""
     rmount.unmount()
     remote_server.kill()
@@ -156,7 +155,7 @@ def test_no_remote(
         rmount.mount()
 
 
-def test_context(rmount: RemoteMount, remote_server: "RemoteServer"):
+def test_context(rmount: RemoteMount, remote_server: RemoteServer):
     """Tests whether the context manager works as expected."""
     rmount.unmount()
     with rmount:
@@ -165,7 +164,7 @@ def test_context(rmount: RemoteMount, remote_server: "RemoteServer"):
 
 
 def test_interupt_upload(
-    rmount: RemoteMount, remote_server: "RemoteServer"
+    rmount: RemoteMount, remote_server: RemoteServer
 ):
     write_lock = multiprocessing.Lock()
 
@@ -219,14 +218,6 @@ def test_interupt_upload(
 
 
 if __name__ == "__main__":
-    from tests.conftest import (
-        RemoteServer,
-        _config,
-        _remote_server,
-        _rmount,
-    )
-
-    logger.setLevel(logging.DEBUG)
     """
     NOTE Because the tests need to recover from an error to run again, it can
     be the case that the tests fail when run one after the other but pass when run
@@ -235,13 +226,13 @@ if __name__ == "__main__":
 
     NOTE to test the connection to the mock server use:
 
-    $ ssh -p 2222 -i /tmp/rmount/test/id_rsa -o StrictHostKeyChecking=no \
+    $ ssh -p 2223 -i /tmp/rmount/test/id_rsa -o StrictHostKeyChecking=no \
           admin@localhost
 
     NOTE To test whether you can mount e.g. there are no RemoteServer errors:
 
     $ sudo apt-get install sshfs
-    $ sshfs -o default_permissions -o ssh_command='ssh -p 2222 -i \
+    $ sshfs -o default_permissions -o ssh_command='ssh -p 2223 -i \
         /tmp/rmount/test/id_rsa -o StrictHostKeyChecking=no' \
         -o cache_timeout=30 admin@localhost:/tmp/rmount/test/remote_path \
         /tmp/rmount/test/mount_path
@@ -251,11 +242,19 @@ if __name__ == "__main__":
     $ mountpoint mount_path
     $ unmount fusermount -uz mount_path
     """
+    from tests.conftest import (
+        _config,
+        _remote_server,
+        _rmount,
+    )
+
+    logger.setLevel(logging.DEBUG)
+
     test_fns = [
-        # test_mount_remount,
-        # test_reconnection,
-        test_connection_drop,
+        test_mount_remount,
         test_interupt_upload,
+        test_reconnection,
+        test_connection_drop,
         test_context,
         test_no_remote,
     ]
