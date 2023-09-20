@@ -13,6 +13,8 @@ test:
 	  --volume /etc/fuse.conf:/etc/fuse.conf:ro \
 	  --volume /etc/passwd:/etc/passwd:ro \
 	  --volume /etc/group:/etc/group:ro \
+	  --volume /etc/shadow:/etc/shadow:ro \
+	  --volume ~/.ssh/authorized_keys:/root/authorized_keys:ro \
 	  --cap-add SYS_ADMIN \
 	  --device /dev/fuse \
 	  --security-opt apparmor:unconfined \
