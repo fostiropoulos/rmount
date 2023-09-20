@@ -96,12 +96,9 @@ def _make_container(
         environment=enviroment_config,
         ports={"2222/tcp": None},
         detach=True,
-        user=f"{user_id}:{user_gid}",
         volumes={
             str(local_path): {"bind": str(remote_path), "mode": "rw"}
         },
-        # remove=True,
-        # command = ["/bin/sh", "-c" , "mkdir -p /tmp/xxxx && /init"]
     )
 
 
@@ -214,7 +211,6 @@ class RemoteServer:
         self._ssh_user: str = ssh_user
         self._container_name: str = container_name
         self._client: docker.DockerClient = _make_docker_client()
-
         if volume_name is not None and not self._client.volumes.get(
             volume_name
         ):
