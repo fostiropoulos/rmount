@@ -99,7 +99,7 @@ def volume_name(pytestconfig):
     return pytestconfig.getoption("--volume-name")
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def remote_server(tmp_path: Path, pytestconfig):
     volume_name = pytestconfig.getoption("--volume-name")
     with _remote_server(tmp_path, volume_name) as s:

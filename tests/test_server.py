@@ -47,6 +47,7 @@ def test_run(tmp_path: Path, public_key_fn, volume_name):
         remote_path = Path("/tmp")
     else:
         _local_path = local_path
+        remote_path = None
     server = RemoteServer(
         _local_path,
         volume_name=volume_name,
@@ -73,12 +74,10 @@ if __name__ == "__main__":
     from tests.conftest import _public_key
 
     tmp_path: Path = Path("/tmp/remote-server-test")
-    shutil.rmtree(tmp_path)
+    shutil.rmtree(tmp_path, ignore_errors=True)
     tmp_path.mkdir(exist_ok=True, parents=True)
 
     test_invalid_parameters(tmp_path)
     test_run(
-        tmp_path=tmp_path,
-        public_key_fn=_public_key,
-        pytestconfig=None,
+        tmp_path=tmp_path, public_key_fn=_public_key, volume_name=None
     )
