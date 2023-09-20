@@ -24,8 +24,10 @@ from rmount import RemoteMount, main
 from rmount.server import RemoteServer
 from rmount.utils import terminate, unmount
 
-main.HEARTBEAT_ERROR_COUNT = 2
-main.RESTART_ERROR = 2
+main.MOUNT_ERROR_LIMIT = 2
+main.RESTART_LIMIT = 2
+main.MISSED_HEARTBEATS = 2
+main.MOUNT_CALLBACK_RETRIES = 2
 
 logger = logging.getLogger("RMount")
 logger.setLevel(logging.WARN)
@@ -50,6 +52,15 @@ def _assert_with_timeout(fn):
             pass
         time.sleep(1)
     assert False
+
+
+def _read_folder_contents(folder_path: Path):
+    return [
+        f.read_bytes()
+        for f in sorted(
+            folder_path.glob("[!.]*"), key=lambda x: x.name
+        )
+    ]
 
 
 def test_mount_remount(
@@ -138,7 +149,7 @@ def test_connection_drop(
         target=_run_error,
     )
     p.start()
-    for i in range(120):
+    for i in range(180):
         if is_dead.is_set():
             break
         time.sleep(1)
@@ -168,17 +179,14 @@ def test_interupt_upload(
 ):
     write_lock = multiprocessing.Lock()
 
-    n_files = 3
-
     def delayed_unmount(queue: multiprocessing.Queue, write_lock):
         time.sleep(5)
-        write_lock.acquire(block=True)
-        queue.put(
-            [
-                rmount.local_path.joinpath(f"{i:02d}").read_bytes()
-                for i in range(n_files)
-            ]
-        )
+        if not write_lock.acquire(block=True, timeout=10):
+            queue.put([])
+            raise RuntimeError
+        rmount.refresh()
+        time.sleep(1)
+        queue.put(_read_folder_contents(rmount.local_path))
         terminate()
         rmount._is_alive.clear()
         rmount._is_alive.wait(timeout=5)
@@ -191,27 +199,29 @@ def test_interupt_upload(
         target=delayed_unmount, args=(q, write_lock)
     )
     slow_kill.start()
-    n_numbers = 10_000_000
+    n_numbers = 10_000
     # should be around 100MB of files
     while True:
         try:
             if not write_lock.acquire(block=True, timeout=1):
                 break
-            name = f"{random.randint(0,n_files):02d}"
+            name = 0
             data = bytes(
                 random.randint(n_numbers - 1, n_numbers * 10)
             )
-            rmount.local_path.joinpath(name).write_bytes(data)
+            with rmount.local_path.joinpath(f"{name:02d}").open(
+                "ab+"
+            ) as f:
+                f.write(data)
+            name += 1
             write_lock.release()
             time.sleep(0.1)
         except:  # noqa: E722
-            pass
+            write_lock.release()
     ints_1 = q.get()
-    ints_2 = [
-        rmount.remote_path.joinpath(f"{i:02d}").read_bytes()
-        for i in range(n_files)
-    ]
-
+    ints_2 = _read_folder_contents(rmount.remote_path)
+    n_files = len(ints_1)
+    assert len(ints_2) == n_files
     assert all(
         ints_1[i] == ints_2[i] for i in range(n_files)
     ) and all(ints_2[0] != ints_2[i] for i in range(1, n_files))
