@@ -2,7 +2,6 @@
 Main RemoteMount module with auxiliary utilities to enable multi-processing
 monitoring.
 """
-import dataclasses
 import logging
 import multiprocessing as mp
 import os
@@ -483,7 +482,7 @@ class RemoteMount:
         self._heart: Process | None = None
         self._is_alive: Event = mp.Event()
         self._terminate_callback: Event = mp.Event()
-        self.__settings = dataclasses.asdict(settings)
+        self.__settings = settings.to_dict()
         self._config_path: Path = self.__write_settings()
         self._error_callback = error_callback
 

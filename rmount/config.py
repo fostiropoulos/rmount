@@ -16,6 +16,10 @@ class Remote:
     key_use_agent: bool = False
     type: str = "sftp"
 
+    def to_dict(self):
+        _dict = self.__dict__
+        return _dict
+
 
 @dataclass
 class S3:
@@ -35,3 +39,7 @@ class S3:
     server_side_encryption: str = ""
     storage_class: str = ""
     type: str = "s3"
+
+    def to_dict(self):
+        _dict = self.__dict__
+        return _dict
