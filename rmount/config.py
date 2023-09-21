@@ -3,26 +3,75 @@ Configuration module that implements default configuration for Google Cloud
 S3 and a remote SSH server, with the possibility to extend to other providers.
 """
 # pylint: disable=missing-class-docstring
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 
 
+# pylint: disable=too-few-public-methods
+class RCloneConfig(ABC):
+    @abstractmethod
+    def to_dict(self) -> dict[str, str]:
+        """
+        dictionary representation of the configuration
+        that can be then parsed to be used for RClone.
+
+        Returns
+        -------
+        dict[str, str]
+            the dictionary representation of the configuration.
+        """
+
+
+# pylint: disable=too-few-public-methods
+class Remote(RCloneConfig):
+    def __init__(
+        self,
+        host: str,
+        user: str,
+        port: int,
+        key_pem: str | None = None,
+        key_file: Path | None = None,
+        key_use_agent: bool = False,
+        remote_type: str = "sftp",
+    ):
+        self.key_pem: str
+        if not (key_file is None) ^ (key_pem is None):
+            raise ValueError(
+                "Must only provide either `key_pem` or `key_file`."
+            )
+        if key_file is not None:
+            self.key_pem = key_file.read_text().replace("\n", "\\n")
+        elif key_pem is not None:
+            self.key_pem = key_pem
+        self.host: str = host
+        self.user: str = user
+        self.port: int = port
+        self.key_use_agent: bool = key_use_agent
+        self.remote_type: str = remote_type
+
+    def to_dict(self) -> dict[str, str]:
+        """
+        dictionary representation of the configuration
+        that can be then parsed to be used for RClone.
+
+        Returns
+        -------
+        dict[str, str]
+            the dictionary representation of the configuration.
+        """
+        return {
+            "host": self.host,
+            "user": self.user,
+            "port": str(self.port),
+            "key_pem": self.key_pem,
+            "key_use_agent": str(self.key_use_agent),
+            "type": self.remote_type,
+        }
+
+
 @dataclass
-class Remote:
-    host: str
-    user: str
-    port: int
-    key_file: Path
-    key_use_agent: bool = False
-    type: str = "sftp"
-
-    def to_dict(self):
-        _dict = self.__dict__
-        return _dict
-
-
-@dataclass
-class S3:
+class S3(ABC):
     provider: str
     access_key_id: str
     secret_access_key: str
@@ -40,6 +89,15 @@ class S3:
     storage_class: str = ""
     type: str = "s3"
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, str]:
+        """
+        dictionary representation of the configuration
+        that can be then parsed to be used for RClone.
+
+        Returns
+        -------
+        dict[str, str]
+            the dictionary representation of the configuration.
+        """
         _dict = self.__dict__
-        return _dict
+        return {str(k): str(v) for k, v in _dict.items()}
