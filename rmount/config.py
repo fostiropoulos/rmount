@@ -43,7 +43,7 @@ class Remote(RCloneConfig):
         if key_file is not None:
             self.key_pem = key_file.read_text().replace("\n", "\\n")
         elif key_pem is not None:
-            self.key_pem = key_pem
+            self.key_pem = key_pem.replace("\n", "\\n")
         self.host: str = host
         self.user: str = user
         self.port: int = port

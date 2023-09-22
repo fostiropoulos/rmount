@@ -478,6 +478,8 @@ class RemoteMount:
         self.remote_path: Path = Path(remote_path)
         self._refresh_interval: int = refresh_interval_s
         self._timeout: int = timeout
+        if verbose:
+            logger.setLevel(logging.DEBUG)
         self._verbose: bool = verbose
         self._heart: Process | None = None
         self._is_alive: Event = mp.Event()
