@@ -98,7 +98,9 @@ def is_alive(local_path: Path, timeout: int) -> bool:
                 logger.debug("Mountpoint last alive: %s", last_alive)
         except Exception:  # pylint: disable=broad-exception-caught
             exc = traceback.format_exc()
-            logger.error(exc)
+            # error relating to `.rmount` be synchronously written to
+            if "[Errno 5] Input/output error" not in str(e):
+                logger.error(exc)
 
         mountpoint_flag = is_mounted(local_path, timeout=timeout)
         logger.debug(
@@ -217,7 +219,7 @@ def _heartbeat(  # noqa:DOC501
                 terminate_event.clear()
                 return
             except (
-                Exception  # pylint: disable=broad-exception-caught
+                Exception # pylint: disable=broad-exception-caught
             ):
                 exc = traceback.format_exc()
                 logger.error("Error during heartbeat error-callback.")
