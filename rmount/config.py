@@ -23,7 +23,7 @@ class RCloneConfig(ABC):
         """
 
 
-# pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods,redefined-builtin
 class Remote(RCloneConfig):
     def __init__(
         self,
