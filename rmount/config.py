@@ -33,7 +33,7 @@ class Remote(RCloneConfig):
         key_pem: str | None = None,
         key_file: Path | None = None,
         key_use_agent: bool = False,
-        remote_type: str = "sftp",
+        type: str = "sftp",
     ):
         self.key_pem: str
         if not (key_file is None) ^ (key_pem is None):
@@ -48,7 +48,7 @@ class Remote(RCloneConfig):
         self.user: str = user
         self.port: int = port
         self.key_use_agent: bool = key_use_agent
-        self.remote_type: str = remote_type
+        self.type: str = type
 
     def to_dict(self) -> dict[str, str]:
         """
@@ -66,7 +66,7 @@ class Remote(RCloneConfig):
             "port": str(self.port),
             "key_pem": self.key_pem,
             "key_use_agent": str(self.key_use_agent),
-            "remote_type": self.remote_type,
+            "type": self.type,
         }
 
 
