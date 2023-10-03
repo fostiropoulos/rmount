@@ -66,7 +66,7 @@ class Remote(RCloneConfig):
             "port": str(self.port),
             "key_pem": self.key_pem,
             "key_use_agent": str(self.key_use_agent),
-            "type": self.remote_type,
+            "remote_type": self.remote_type,
         }
 
 
