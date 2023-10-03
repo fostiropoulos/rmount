@@ -96,7 +96,7 @@ def is_alive(local_path: Path, timeout: int) -> bool:
                 )
                 file_flag = time.time() - last_alive < timeout * 2
                 logger.debug("Mountpoint last alive: %s", last_alive)
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception as e:  # pylint: disable=broad-exception-caught
             exc = traceback.format_exc()
             # error relating to `.rmount` be synchronously written to
             if "[Errno 5] Input/output error" not in str(e):
