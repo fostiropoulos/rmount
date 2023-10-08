@@ -84,6 +84,10 @@ with mount:
     local_path.joinpath("foo").write_text("bar")
 ```
 
+### Known Issue
+
+Because the monitoring of the mount process happens in the background and is monitored via threads and processes. The background threads / processes are run async to the main process and are used to restart the mount process and eventually gracefully exit. When an application dies or is killed for x,y,z reason the graceful clean-up, such as unmounting might not take place. As such you can have a mount process running on the background. The problem can not be addressed from within the library as this depends on many OS related factors. For example, a new process is spawned and if `SIG_KILL` is received for one process it is not possible to detect from within python or attempt a clean-up as such all other background processes will remain alive.
+
 
 
 ## Developer guide
