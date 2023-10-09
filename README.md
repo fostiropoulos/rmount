@@ -84,11 +84,54 @@ with mount:
     local_path.joinpath("foo").write_text("bar")
 ```
 
-### Known Issue
+## Advanced Usage
+
+You might prefer to not use S3 storage, for several reasons, such as privacy, costs and more. In those cases we support the use of a personal `RemoteServer`.
+
+`pip install rmount[server]`
+### RemoteServer
+
+RemoteServer is a docker container running an SFTP server. The advantage of using a `RemoteServer` is that you can isolate access between the storage of the mount process and access to more sensitive files. This allows you fine-grained control of file-system access using SSH.
+
+#### Use-case example
+Assume you use `rmount` for the experiment You might want to provide access to the storage of the experiment data to several people you trust enough to get access to experiment data, e.g. `ABLATOR` dashboard, but at the same time you might not want them to be able to `ssh` into your main machine to have access to your personal files.
+
+```python
+from rmount import RemoteServer
+from pathlib import Path
+public_key = Path.home() / ".ssh" / "id_rsa.pub"
+private_key = Path.home() / ".ssh" / "id_rsa"
+local_path = Path("/tmp/")
+
+server = RemoteServer(
+    local_path=local_path,
+    remote_path=remote_path,
+    public_key=public_key,
+)
+server.start()
+
+config = Remote(
+    host=server.ip_address,
+    user=server.user,
+    port=server.port,
+    key_file=private_key,
+)
+mount = RemoteMount(config, remote_path, local_path)
+with mount:
+    local_path.joinpath("foo").write_text("bar")
+
+print(server.ssh_command)
+```
+
+A full example can be found [HERE](examples/remote_server.py)
+## Known Issue
 
 Because the monitoring of the mount process happens in the background and is monitored via threads and processes. The background threads / processes are run async to the main process and are used to restart the mount process and eventually gracefully exit. When an application dies or is killed for x,y,z reason the graceful clean-up, such as unmounting might not take place. As such you can have a mount process running on the background. The problem can not be addressed from within the library as this depends on many OS related factors. For example, a new process is spawned and if `SIG_KILL` is received for one process it is not possible to detect from within python or attempt a clean-up as such all other background processes will remain alive.
 
 
+**In summary**
+
+if you `SIG_KILL` a python application using `rmount` you *might* also need to manually clean-up after yourself any remaining background processes e.g. `rclone` or they will use memory and compute.
 
 ## Developer guide
 Full details [HERE](DEVELOPER.md)

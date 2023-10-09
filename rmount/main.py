@@ -418,7 +418,10 @@ class _MountProcess:
         self.kill()
 
     def __del__(self):
-        self.kill()
+        try:
+            self.kill()
+        except Exception:
+            ...
 
 
 class RemoteMount:

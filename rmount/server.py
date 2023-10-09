@@ -5,6 +5,7 @@ import multiprocessing
 import os
 import time
 from pathlib import Path
+import uuid
 
 
 try:
@@ -22,6 +23,7 @@ logger = logging.getLogger("RMount")
 DEFAULT_PUB_KEY = Path.home() / ".ssh" / "id_rsa.pub"
 RUNNING = "running"
 PROHIBITED_USER_NAME = "root"
+PORT = 2222
 
 
 def _docker_kill_running_containers(
@@ -94,7 +96,7 @@ def _make_container(
         name=container_name,
         image="lscr.io/linuxserver/openssh-server:latest",
         environment=enviroment_config,
-        ports={"2222/tcp": None},
+        ports={f"{PORT}/tcp": None},
         detach=True,
         volumes={
             str(local_path): {"bind": str(remote_path), "mode": "rw"}
@@ -134,7 +136,7 @@ class RemoteServer:
         `local_path:remote_path` -> `local_path:local_path`, by default None
     ssh_user : str, optional
         the ssh-user that can be used to access the RemoteServer, by default "admin"
-    container_name : str, optional
+    container_name : str | None, optional
         The unique name of the container. RemoteServer will kill any other container
         by the same name to avoid network conflicts, by default "rmount-ssh-server"
     verbose : bool, optional
@@ -178,11 +180,12 @@ class RemoteServer:
         public_key_file: str | Path | None = None,
         remote_path: Path | str | None = None,
         ssh_user: str = "admin",
-        container_name: str = "rmount-ssh-server",
+        container_name: str | None = None,
         verbose: bool = False,
     ) -> None:
         self._remote_path = remote_path
         self.ip_address: None | str = None
+        self.port = PORT
         self._container: None | Container = None
         if not (public_key is None) ^ (public_key_file is None):
             raise ValueError(
@@ -208,8 +211,11 @@ class RemoteServer:
             raise ValueError(
                 f"Invalid ssh_user='{PROHIBITED_USER_NAME}'"
             )
-        self._ssh_user: str = ssh_user
-        self._container_name: str = container_name
+        self.user: str = ssh_user
+        if container_name is None:
+            self._container_name: str = str(uuid.uuid4())
+        else:
+            self._container_name = container_name
         self._client: docker.DockerClient = _make_docker_client()
         if volume_name is not None and not self._client.volumes.get(
             volume_name
@@ -268,7 +274,7 @@ class RemoteServer:
             remote_path=self._remote_path,
             docker_client=self._client,
             container_name=self._container_name,
-            ssh_user=self._ssh_user,
+            ssh_user=self.user,
         )
         self.ip_address = self._client.containers.get(
             self._container.id
@@ -326,8 +332,8 @@ class RemoteServer:
                 f"Container `{self._container_name}` is not running."
             )
         return (
-            "ssh -p 2222 -o StrictHostKeyChecking=no"
-            f" {self._ssh_user}@{self.ip_address}"
+            f"ssh -p {self.port} -o StrictHostKeyChecking=no"
+            f" {self.user}@{self.ip_address}"
         )
 
 
