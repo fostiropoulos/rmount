@@ -420,8 +420,7 @@ class _MountProcess:
     def __del__(self):
         try:
             self.kill()
-        except Exception:
-            ...
+        except Exception: ...
 
 
 class RemoteMount:
