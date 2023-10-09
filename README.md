@@ -89,9 +89,13 @@ with mount:
 You might prefer to not use S3 storage, for several reasons, such as privacy, costs and more. In those cases we support the use of a personal `RemoteServer`.
 
 `pip install rmount[server]`
+
+You will also need Docker installed with root access. Please see [DEVELOPER GUIDE](DEVELOPER.md)
 ### RemoteServer
 
 RemoteServer is a docker container running an SFTP server. The advantage of using a `RemoteServer` is that you can isolate access between the storage of the mount process and access to more sensitive files. This allows you fine-grained control of file-system access using SSH.
+
+
 
 #### Use-case example
 Assume you use `rmount` for the experiment You might want to provide access to the storage of the experiment data to several people you trust enough to get access to experiment data, e.g. `ABLATOR` dashboard, but at the same time you might not want them to be able to `ssh` into your main machine to have access to your personal files.
