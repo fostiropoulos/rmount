@@ -33,7 +33,7 @@ def test_invalid_parameters(tmp_path: Path):
     server = RemoteServer(tmp_path, public_key="x")
     with pytest.raises(
         RuntimeError,
-        match="Container `rmount-ssh-server` is not running.",
+        match=f"Container `{server._container_name}` is not running.",
     ):
         server.ssh_command
 
