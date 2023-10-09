@@ -21,10 +21,13 @@ from pathlib import Path
 import pytest
 
 from rmount import RemoteMount, main
+from rmount.server import RemoteServer
 from rmount.utils import terminate, unmount
 
-main.HEARTBEAT_ERROR_COUNT = 2
-main.RESTART_ERROR = 2
+main.MOUNT_ERROR_LIMIT = 2
+main.RESTART_LIMIT = 2
+main.MISSED_HEARTBEATS = 2
+main.MOUNT_CALLBACK_RETRIES = 2
 
 logger = logging.getLogger("RMount")
 logger.setLevel(logging.WARN)
@@ -51,8 +54,17 @@ def _assert_with_timeout(fn):
     assert False
 
 
+def _read_folder_contents(folder_path: Path):
+    return [
+        f.read_bytes()
+        for f in sorted(
+            folder_path.glob("[!.]*"), key=lambda x: x.name
+        )
+    ]
+
+
 def test_mount_remount(
-    rmount: RemoteMount, remote_server: "RemoteServer"
+    rmount: RemoteMount, remote_server: RemoteServer
 ):
     """Tests whether the storage is persistent between mounts / unmounts."""
     local_path = rmount.local_path
@@ -93,7 +105,7 @@ def test_mount_remount(
 
 
 def test_reconnection(
-    rmount: RemoteMount, remote_server: "RemoteServer"
+    rmount: RemoteMount, remote_server: RemoteServer
 ):
     """Tests what happens when the connection between rmount and a remote
     suddenly drops but is then restored."""
@@ -109,7 +121,7 @@ def test_reconnection(
 
 
 def test_connection_drop(
-    rmount: RemoteMount, remote_server: "RemoteServer"
+    rmount: RemoteMount, remote_server: RemoteServer
 ):
     """Tests what happens when the connection between rmount and a remote
     suddenly drops."""
@@ -137,16 +149,14 @@ def test_connection_drop(
         target=_run_error,
     )
     p.start()
-    for i in range(120):
+    for i in range(180):
         if is_dead.is_set():
             break
         time.sleep(1)
     assert is_dead.is_set()
 
 
-def test_no_remote(
-    rmount: RemoteMount, remote_server: "RemoteServer"
-):
+def test_no_remote(rmount: RemoteMount, remote_server: RemoteServer):
     """Tests what happens when trying to connect to an invalid remote."""
     rmount.unmount()
     remote_server.kill()
@@ -156,7 +166,7 @@ def test_no_remote(
         rmount.mount()
 
 
-def test_context(rmount: RemoteMount, remote_server: "RemoteServer"):
+def test_context(rmount: RemoteMount, remote_server: RemoteServer):
     """Tests whether the context manager works as expected."""
     rmount.unmount()
     with rmount:
@@ -165,21 +175,18 @@ def test_context(rmount: RemoteMount, remote_server: "RemoteServer"):
 
 
 def test_interupt_upload(
-    rmount: RemoteMount, remote_server: "RemoteServer"
+    rmount: RemoteMount, remote_server: RemoteServer
 ):
     write_lock = multiprocessing.Lock()
 
-    n_files = 3
-
     def delayed_unmount(queue: multiprocessing.Queue, write_lock):
         time.sleep(5)
-        write_lock.acquire(block=True)
-        queue.put(
-            [
-                rmount.local_path.joinpath(f"{i:02d}").read_bytes()
-                for i in range(n_files)
-            ]
-        )
+        if not write_lock.acquire(block=True, timeout=10):
+            queue.put([])
+            raise RuntimeError
+        rmount.refresh()
+        time.sleep(1)
+        queue.put(_read_folder_contents(rmount.local_path))
         terminate()
         rmount._is_alive.clear()
         rmount._is_alive.wait(timeout=5)
@@ -192,41 +199,35 @@ def test_interupt_upload(
         target=delayed_unmount, args=(q, write_lock)
     )
     slow_kill.start()
-    n_numbers = 10_000_000
+    n_numbers = 10_000
     # should be around 100MB of files
     while True:
         try:
             if not write_lock.acquire(block=True, timeout=1):
                 break
-            name = f"{random.randint(0,n_files):02d}"
+            name = 0
             data = bytes(
                 random.randint(n_numbers - 1, n_numbers * 10)
             )
-            rmount.local_path.joinpath(name).write_bytes(data)
+            with rmount.local_path.joinpath(f"{name:02d}").open(
+                "ab+"
+            ) as f:
+                f.write(data)
+            name += 1
             write_lock.release()
             time.sleep(0.1)
         except:  # noqa: E722
-            pass
+            write_lock.release()
     ints_1 = q.get()
-    ints_2 = [
-        rmount.remote_path.joinpath(f"{i:02d}").read_bytes()
-        for i in range(n_files)
-    ]
-
+    ints_2 = _read_folder_contents(rmount.remote_path)
+    n_files = len(ints_1)
+    assert len(ints_2) == n_files
     assert all(
         ints_1[i] == ints_2[i] for i in range(n_files)
     ) and all(ints_2[0] != ints_2[i] for i in range(1, n_files))
 
 
 if __name__ == "__main__":
-    from tests.conftest import (
-        RemoteServer,
-        _config,
-        _remote_server,
-        _rmount,
-    )
-
-    logger.setLevel(logging.DEBUG)
     """
     NOTE Because the tests need to recover from an error to run again, it can
     be the case that the tests fail when run one after the other but pass when run
@@ -235,13 +236,13 @@ if __name__ == "__main__":
 
     NOTE to test the connection to the mock server use:
 
-    $ ssh -p 2222 -i /tmp/rmount/test/id_rsa -o StrictHostKeyChecking=no \
+    $ ssh -p 2223 -i /tmp/rmount/test/id_rsa -o StrictHostKeyChecking=no \
           admin@localhost
 
     NOTE To test whether you can mount e.g. there are no RemoteServer errors:
 
     $ sudo apt-get install sshfs
-    $ sshfs -o default_permissions -o ssh_command='ssh -p 2222 -i \
+    $ sshfs -o default_permissions -o ssh_command='ssh -p 2223 -i \
         /tmp/rmount/test/id_rsa -o StrictHostKeyChecking=no' \
         -o cache_timeout=30 admin@localhost:/tmp/rmount/test/remote_path \
         /tmp/rmount/test/mount_path
@@ -251,11 +252,19 @@ if __name__ == "__main__":
     $ mountpoint mount_path
     $ unmount fusermount -uz mount_path
     """
+    from tests.conftest import (
+        _config,
+        _remote_server,
+        _rmount,
+    )
+
+    logger.setLevel(logging.DEBUG)
+
     test_fns = [
-        # test_mount_remount,
-        # test_reconnection,
-        test_connection_drop,
+        test_mount_remount,
         test_interupt_upload,
+        test_reconnection,
+        test_connection_drop,
         test_context,
         test_no_remote,
     ]

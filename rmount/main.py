@@ -2,7 +2,6 @@
 Main RemoteMount module with auxiliary utilities to enable multi-processing
 monitoring.
 """
-import dataclasses
 import logging
 import multiprocessing as mp
 import os
@@ -15,7 +14,7 @@ from collections import abc
 from multiprocessing import Process, Queue, active_children
 from multiprocessing.synchronize import Event, Lock
 from pathlib import Path
-
+import uuid
 from rmount.config import S3, Remote
 from rmount.utils import (
     CFG_NAME,
@@ -32,11 +31,15 @@ from rmount.utils import (
 
 logger = logging.getLogger("RMount")
 
-HEARTBEAT_ERROR_COUNT = 5
-RESTART_ERROR = 5
-MISSED_HEARTBEATS = 5
-MOUNT_CALLBACK_ERROR_COUNT = 5
-LINUX_NAME = "posix"
+# Number of missed heartbeats of the mount process after which to throw an error.
+MISSED_HEARTBEATS = 3
+# Number of retries to mount after missed heartbeats
+MOUNT_ERROR_LIMIT = 1
+# Number of retries to detect the mount point after initialization
+MOUNT_CALLBACK_RETRIES = 5
+# Name of OS that is supported
+SUPPORTED_OS = ["posix"]
+INPUT_OUTPUT_ERROR_MSG = "[Errno 5] Input/output error"
 
 
 def _mount_callback(  # noqa:DOC201
@@ -46,9 +49,9 @@ def _mount_callback(  # noqa:DOC201
     A callback to determine whether the `local_path` mount point is active and
     signal the main process via `is_alive_event`. The function returns either after
     the mount point is active or after a time threshold is reached. The threshold is
-    calculated based  on ``MOUNT_CALLBACK_ERROR_COUNT`` repetitions of `timeout` with
+    calculated based  on ``MOUNT_CALLBACK_RETRIES`` repetitions of `timeout` with
     2 seconds delay between repetitions. i.e.
-    timeout_s = MOUNT_CALLBACK_ERROR_COUNT * `timeout` * 2
+    timeout_s = MOUNT_CALLBACK_RETRIES * `timeout` * 2
 
     Parameters
     ----------
@@ -59,7 +62,7 @@ def _mount_callback(  # noqa:DOC201
     is_alive_event : Event
         The object used to signal that the mount point is active.
     """
-    for _ in range(MOUNT_CALLBACK_ERROR_COUNT):
+    for _ in range(MOUNT_CALLBACK_RETRIES):
         if is_alive(local_path, timeout=timeout):
             is_alive_event.set()
             return
@@ -97,9 +100,12 @@ def is_alive(local_path: Path, timeout: int) -> bool:
                 )
                 file_flag = time.time() - last_alive < timeout * 2
                 logger.debug("Mountpoint last alive: %s", last_alive)
-        except Exception:  # pylint: disable=broad-exception-caught
-            exc = traceback.format_exc()
-            logger.error(exc)
+        # pylint: disable=broad-exception-caught
+        except Exception:
+            exc_str = traceback.format_exc()
+            # error relating to `.rmount` be synchronously written to
+            if INPUT_OUTPUT_ERROR_MSG not in exc_str:
+                logger.error(exc_str)
 
         mountpoint_flag = is_mounted(local_path, timeout=timeout)
         logger.debug(
@@ -120,7 +126,7 @@ def is_alive(local_path: Path, timeout: int) -> bool:
     return True
 
 
-# pylint: disable=too-complex
+# pylint: disable=broad-exception-caught
 def _heartbeat(  # noqa:DOC501
     config_path: Path,
     local_path: Path,
@@ -136,7 +142,7 @@ def _heartbeat(  # noqa:DOC501
     _heartbeat function that runs constantly in the background
     to monitor the health of the mount process. If the mount process
     fails to communicate up to ``MISSED_HEARTBEATS``, then it restarts
-    the mount process up to a ``RESTART_ERROR`` limit.
+    the mount process up to a ``MOUNT_ERROR_LIMIT`` limit.
 
     Parameters
     ----------
@@ -174,7 +180,6 @@ def _heartbeat(  # noqa:DOC501
         refresh_interval_s=refresh_interval,
         verbose=verbose,
     )
-    error_count = 0
     missed_heartbeats = 0
     while alive_event.is_set():
         try:
@@ -182,7 +187,7 @@ def _heartbeat(  # noqa:DOC501
             # if the refresh does not happen very often and the timeout
             # is less than the refresh, it will lead to incorrectly thinking
             # the process is dead.
-            alive_timeout = max(timeout, refresh_interval)
+            alive_timeout = max(2, refresh_interval)
 
             refresh(
                 mount_process.remote_path,
@@ -190,22 +195,18 @@ def _heartbeat(  # noqa:DOC501
                 timeout=timeout,
             )
             _alive = is_alive(local_path, timeout=alive_timeout)
-            if not _alive and error_count >= RESTART_ERROR:
-                raise TimeoutError("Mount process is dead.")
             if not _alive and missed_heartbeats >= MISSED_HEARTBEATS:
-                error_count += 1
                 missed_heartbeats = 0
                 unmount(local_path, timeout=timeout)
-                continue
+                raise TimeoutError("Mount process is dead.")
             if not _alive:
                 missed_heartbeats += 1
                 continue
-            error_count = 0
             missed_heartbeats = 0
             if lock is not None:
                 lock.release()
                 lock = None
-        except Exception:  # pylint: disable=broad-exception-caught
+        except Exception:
             exc = traceback.format_exc()
             logger.error("Error during process heartbeat.")
             logger.debug(exc)
@@ -217,9 +218,7 @@ def _heartbeat(  # noqa:DOC501
                 # The process is not exiting gracefully
                 terminate_event.clear()
                 return
-            except (
-                Exception  # pylint: disable=broad-exception-caught
-            ):
+            except Exception:
                 exc = traceback.format_exc()
                 logger.error("Error during heartbeat error-callback.")
                 logger.debug(exc)
@@ -292,7 +291,7 @@ class _MountProcess:
         to create the mount point.
 
         Then it monitors the time at which the mount point will be successfully
-        created. If it fails to mount, it retries for ``HEARTBEAT_ERROR_COUNT``
+        created. If it fails to mount, it retries for ``MOUNT_ERROR_LIMIT``
         times and finally returns or raises an error.
 
         Raises
@@ -339,7 +338,7 @@ class _MountProcess:
             )
             mt_c.start()
             _call_back_timeout = (
-                timeout * (MOUNT_CALLBACK_ERROR_COUNT + 1) * 2
+                timeout * (MOUNT_CALLBACK_RETRIES + 1) * 2
             )
             for _ in range(_call_back_timeout):
                 if is_alive_event.wait(timeout=1):
@@ -361,7 +360,7 @@ class _MountProcess:
         Called when the mount process faces an error to
         restart the mount process. The method uses the time record of
         the last error to terminate as the error could be irrecoverable
-        after ``HEARTBEAT_ERROR_COUNT`` restarts.
+        after ``MOUNT_ERROR_LIMIT`` restarts.
 
         Parameters
         ----------
@@ -377,16 +376,13 @@ class _MountProcess:
         """
         if timeout is None:
             timeout = self._timeout
-        if self._remount_err_count >= HEARTBEAT_ERROR_COUNT:
+        if self._remount_err_count >= MOUNT_ERROR_LIMIT:
             unmount(self.local_path, timeout=timeout)
             error_msg = (
-                f"Failed to mount {HEARTBEAT_ERROR_COUNT} times in a"
-                " row."
+                f"Failed to mount {MOUNT_ERROR_LIMIT} times in a row."
             )
             raise OSError(error_msg)
-        _error_timeout = (
-            timeout * (MOUNT_CALLBACK_ERROR_COUNT + 3) * 2
-        )
+        _error_timeout = timeout * (MOUNT_CALLBACK_RETRIES + 3) * 2
         if time.time() - self._last_error_time < _error_timeout:
             # error happened within the time it takes for the mount_callback
             # to terminate
@@ -399,7 +395,7 @@ class _MountProcess:
         logger.error(
             "Mount point failure. Restarting %s / %s ...",
             self._remount_err_count,
-            HEARTBEAT_ERROR_COUNT,
+            MOUNT_ERROR_LIMIT,
         )
         self.kill()
         self.mount()
@@ -422,7 +418,10 @@ class _MountProcess:
         self.kill()
 
     def __del__(self):
-        self.kill()
+        try:
+            self.kill()
+        except Exception:
+            ...
 
 
 class RemoteMount:
@@ -473,7 +472,7 @@ class RemoteMount:
         verbose: bool = False,
         error_callback: abc.Callable | None = None,
     ):
-        if os.name.lower() != LINUX_NAME:
+        if os.name.lower() not in SUPPORTED_OS:
             raise NotImplementedError(
                 "RemoteMount not supported for your platform"
                 f" `{os.name}`"
@@ -482,11 +481,13 @@ class RemoteMount:
         self.remote_path: Path = Path(remote_path)
         self._refresh_interval: int = refresh_interval_s
         self._timeout: int = timeout
+        if verbose:
+            logger.setLevel(logging.DEBUG)
         self._verbose: bool = verbose
         self._heart: Process | None = None
         self._is_alive: Event = mp.Event()
         self._terminate_callback: Event = mp.Event()
-        self.__settings = dataclasses.asdict(settings)
+        self.__settings = settings.to_dict()
         self._config_path: Path = self.__write_settings()
         self._error_callback = error_callback
 
@@ -549,7 +550,8 @@ class RemoteMount:
                 else:
                     raise RuntimeError("Mount process died.")
 
-        threading.Thread(target=_monitor).start()
+        monitor = threading.Thread(target=_monitor)
+        monitor.start()
 
     def is_alive(self, timeout: int | None = None) -> bool:
         """
@@ -614,7 +616,7 @@ class RemoteMount:
 
     def __write_settings(self):
         tmp_dir = tempfile.gettempdir()
-        config_path = Path(tmp_dir) / ".rmount.conf"
+        config_path = Path(tmp_dir) / f"{uuid.uuid4()}-rmount.conf"
         descriptor = os.open(
             path=config_path.as_posix(),
             flags=(

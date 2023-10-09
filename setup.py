@@ -30,10 +30,11 @@ setuptools.setup(
     python_requires=">=3.10",
     install_requires=[],
     extras_require={
+        "server": ["docker>=6.1.3"],
         "dev": [
             "mypy>=1.2.0",
             "pytest>=7.3.0",
-            "black>=23.3.0",
+            "black==23.3.0",
             "flake8>=6.0.0",
             "pylint>=2.17.2",
             "mock>=5.0.2",

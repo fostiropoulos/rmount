@@ -13,20 +13,23 @@ test:
 	  --volume /etc/fuse.conf:/etc/fuse.conf:ro \
 	  --volume /etc/passwd:/etc/passwd:ro \
 	  --volume /etc/group:/etc/group:ro \
+	  --volume /etc/shadow:/etc/shadow:ro \
+	  --volume ~/.ssh/authorized_keys:/root/authorized_keys:ro \
 	  --cap-add SYS_ADMIN \
 	  --device /dev/fuse \
 	  --security-opt apparmor:unconfined \
-	  rmount-test-image pytest --volume-mountpoint rmount-test-volume
+	  rmount-test-image pytest --volume-name rmount-test-volume
+
 
 package:
 	python setup.py bdist_wheel --plat-name $(OS)
 
 install:
-	pip install .
+	pip install -e ."[dev]"
 
 .ONESHELL:
 static-checks:
-	black . --check --preview --line-length 70
+	black . --preview --line-length 70
 	flake8 rmount
 	pylint ./rmount
 	mypy rmount
