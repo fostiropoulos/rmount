@@ -15,7 +15,7 @@ else:
 
 setuptools.setup(
     name="rmount",
-    version="0.0.2",
+    version="0.0.3",
     author="Iordanis Fostiropoulos",
     author_email="mail@iordanis.me",
     description="A robust file-system mount to a remote storage.",
