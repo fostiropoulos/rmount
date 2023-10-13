@@ -32,7 +32,7 @@ The above requirements are by default met on most Linux distributions such as Ub
 
 ## Usage
 
-You will first need to define your configuration object and then you can use `RemoteMount` with a context manager i.e. `with` or simply by calling `.mount()` and `.unmount()`. See below and [example](examples/run.py).
+You will first need to define your configuration object and then you can use `RemoteMount` with a context manager i.e. `with` or simply by calling `.mount()` and `.unmount()`. See below and [s3 example](examples/s3.py), [ssh example](examples/remote_server.py).
 ### AWS S3 Config
 
 [Set-up your access keys](https://aws.amazon.com/blogs/security/wheres-my-secret-access-key/)

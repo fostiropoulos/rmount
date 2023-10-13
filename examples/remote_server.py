@@ -10,11 +10,16 @@ if __name__ == "__main__":
     local_path = Path("/tmp/rmount-example")
     remote_path = Path("/tmp/test")
 
+    # If not using RemoteServer
+    # You will need to set-up ssh access to an external server
+    # https://ubuntu.com/server/docs/service-openssh
     with RemoteServer(
         local_path=local_path,
         public_key=public_key,
         remote_path=remote_path,
     ) as s:
+
+
         config = Remote(
             host=s.ip_address,
             user=s.user,
