@@ -37,9 +37,7 @@ class Remote(RCloneConfig):
     ):
         self.key_pem: str
         if not (key_file is None) ^ (key_pem is None):
-            raise ValueError(
-                "Must only provide either `key_pem` or `key_file`."
-            )
+            raise ValueError("Must only provide either `key_pem` or `key_file`.")
         if key_file is not None:
             self.key_pem = key_file.read_text().replace("\n", "\\n")
         elif key_pem is not None:

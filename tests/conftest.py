@@ -61,9 +61,7 @@ def _rmount(tmp_path: Path, config) -> RemoteMount:
     return rmount
 
 
-def _remote_server(
-    tmp_path: Path, volume_name: Path | str | None = None
-) -> RemoteServer:
+def _remote_server(tmp_path: Path, volume_name: Path | str | None = None) -> RemoteServer:
     pub_key = _public_key(tmp_path)
 
     if volume_name is not None:
@@ -87,10 +85,7 @@ def pytest_addoption(parser):
         "--volume-name",
         action="store",
         default=None,
-        help=(
-            "the volume name to optionally use. "
-            "Used only for docker-to-docker tests with shared volumes"
-        ),
+        help="the volume name to optionally use. Used only for docker-to-docker tests with shared volumes",
     )
 
 

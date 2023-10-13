@@ -62,4 +62,4 @@ jobs:
           pip install -e .[dev] -v
       - name: Check formatting with black
         run: |
-          black --check --preview --line-length 70 .
+          black --check --preview --line-length 120 .

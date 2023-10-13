@@ -11,10 +11,7 @@ import uuid
 try:
     import docker
 except ImportError as e:
-    raise ImportError(
-        "You need to install rmount with `server` option i.e. `pip"
-        ' install rmount"[server]"`'
-    ) from e
+    raise ImportError('You need to install rmount with `server` option i.e. `pip install rmount"[server]"`') from e
 from docker.errors import NotFound
 from docker.models.containers import Container
 
@@ -26,12 +23,8 @@ PROHIBITED_USER_NAME = "root"
 PORT = 2222
 
 
-def _docker_kill_running_containers(
-    docker_client: docker.DockerClient, container_name: str
-):
-    for container in docker_client.api.containers(
-        filters={"name": container_name}
-    ):
+def _docker_kill_running_containers(docker_client: docker.DockerClient, container_name: str):
+    for container in docker_client.api.containers(filters={"name": container_name}):
         docker_client.api.kill(container)
     for _ in range(10):
         try:
@@ -89,18 +82,14 @@ def _make_container(
         "PGID": user_gid,
     }
     enviroment_config.update(**kwargs)
-    logger.info(
-        "Running SSH-Server Docker with %s", enviroment_config
-    )
+    logger.info("Running SSH-Server Docker with %s", enviroment_config)
     return docker_client.containers.run(
         name=container_name,
         image="lscr.io/linuxserver/openssh-server:latest",
         environment=enviroment_config,
         ports={f"{PORT}/tcp": None},
         detach=True,
-        volumes={
-            str(local_path): {"bind": str(remote_path), "mode": "rw"}
-        },
+        volumes={str(local_path): {"bind": str(remote_path), "mode": "rw"}},
     )
 
 
@@ -188,41 +177,27 @@ class RemoteServer:
         self.port = PORT
         self._container: None | Container = None
         if not (public_key is None) ^ (public_key_file is None):
-            raise ValueError(
-                "Must provide either `public_key` or"
-                " `public_key_file`, but not both."
-            )
+            raise ValueError("Must provide either `public_key` or `public_key_file`, but not both.")
         if not (local_path is None) ^ (volume_name is None):
-            raise ValueError(
-                "Must provide either `local_path` or `volume_name`,"
-                " but not both."
-            )
+            raise ValueError("Must provide either `local_path` or `volume_name`, but not both.")
         self._public_key: str
         if public_key_file is not None:
-            self._public_key = Path(public_key_file).read_text(
-                encoding="utf-8"
-            )
+            self._public_key = Path(public_key_file).read_text(encoding="utf-8")
         elif public_key is not None:
             self._public_key = public_key
         if verbose:
             logger.setLevel(logging.DEBUG)
         self._verbose = verbose
         if ssh_user == PROHIBITED_USER_NAME:
-            raise ValueError(
-                f"Invalid ssh_user='{PROHIBITED_USER_NAME}'"
-            )
+            raise ValueError(f"Invalid ssh_user='{PROHIBITED_USER_NAME}'")
         self.user: str = ssh_user
         if container_name is None:
             self._container_name: str = str(uuid.uuid4())
         else:
             self._container_name = container_name
         self._client: docker.DockerClient = _make_docker_client()
-        if volume_name is not None and not self._client.volumes.get(
-            volume_name
-        ):
-            raise RuntimeError(
-                f"Volume: '{volume_name}' does not exist."
-            )
+        if volume_name is not None and not self._client.volumes.get(volume_name):
+            raise RuntimeError(f"Volume: '{volume_name}' does not exist.")
         if local_path is not None:
             local_path = Path(local_path).absolute()
             self._local_path = str(local_path)
@@ -235,8 +210,12 @@ class RemoteServer:
     def __exit__(self, *args, **kwargs):
         self.kill()
 
+    # pylint: disable=broad-exception-caught
     def __del__(self):
-        self.kill()
+        try:
+            self.kill()
+        except Exception:
+            ...
 
     def __enter__(self):
         return self.start()
@@ -246,9 +225,7 @@ class RemoteServer:
         kill the currently running container.
         """
         if hasattr(self, "_client"):
-            _docker_kill_running_containers(
-                self._client, self._container_name
-            )
+            _docker_kill_running_containers(self._client, self._container_name)
 
     def start(self) -> "RemoteServer":
         """
@@ -265,9 +242,7 @@ class RemoteServer:
         RuntimeError
             If the container can not start succesfully.
         """
-        _docker_kill_running_containers(
-            self._client, self._container_name
-        )
+        _docker_kill_running_containers(self._client, self._container_name)
         self._container = _make_container(
             public_key=self._public_key,
             local_path=self._local_path,
@@ -276,22 +251,16 @@ class RemoteServer:
             container_name=self._container_name,
             ssh_user=self.user,
         )
-        self.ip_address = self._client.containers.get(
-            self._container.id
-        ).attrs["NetworkSettings"]["IPAddress"]
+        self.ip_address = self._client.containers.get(self._container.id).attrs["NetworkSettings"]["IPAddress"]
 
         if self._verbose:
-            multiprocessing.Process(
-                target=_handle_pipe, args=(self._container,)
-            ).start()
+            multiprocessing.Process(target=_handle_pipe, args=(self._container,)).start()
 
         for _ in range(5):
             if self.is_alive():
                 return self
             time.sleep(1)
-        raise RuntimeError(
-            f"Could not start container `{self._container_name}`"
-        )
+        raise RuntimeError(f"Could not start container `{self._container_name}`")
 
     def is_alive(self) -> bool:
         """
@@ -305,10 +274,7 @@ class RemoteServer:
         if self._container is None:
             return False
         try:
-            return (
-                self._client.containers.get(self._container.id).status
-                == RUNNING
-            )
+            return self._client.containers.get(self._container.id).status == RUNNING
         except:  # pylint: disable=bare-except # noqa: E722
             return False
 
@@ -328,13 +294,8 @@ class RemoteServer:
             If the container has died.
         """
         if not self.is_alive():
-            raise RuntimeError(
-                f"Container `{self._container_name}` is not running."
-            )
-        return (
-            f"ssh -p {self.port} -o StrictHostKeyChecking=no"
-            f" {self.user}@{self.ip_address}"
-        )
+            raise RuntimeError(f"Container `{self._container_name}` is not running.")
+        return f"ssh -p {self.port} -o StrictHostKeyChecking=no {self.user}@{self.ip_address}"
 
 
 def run_server(local_path: Path, public_key_file: Path):
@@ -350,9 +311,7 @@ def run_server(local_path: Path, public_key_file: Path):
     """
     logger.info("Running RemoteServer on the background.")
 
-    server = RemoteServer(
-        local_path=local_path, public_key_file=public_key_file
-    )
+    server = RemoteServer(local_path=local_path, public_key_file=public_key_file)
     server.start()
     logger.info("You can connect via `%s`", {server.ssh_command})
     while server.is_alive():

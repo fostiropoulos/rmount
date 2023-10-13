@@ -36,3 +36,8 @@ check-quote-consistency = yes
 
 
 
+
+[FORMAT]
+
+# Maximum number of characters on a single line.
+max-line-length=120
