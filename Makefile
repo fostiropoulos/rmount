@@ -31,6 +31,8 @@ install:
 static-checks:
 	black . --preview --line-length 120
 	flake8 rmount
+	flake8 tests
+	flake8 examples
 	pylint ./rmount
 	mypy rmount
 

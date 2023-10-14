@@ -18,8 +18,6 @@ if __name__ == "__main__":
         public_key=public_key,
         remote_path=remote_path,
     ) as s:
-
-
         config = Remote(
             host=s.ip_address,
             user=s.user,

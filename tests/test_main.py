@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from rmount import RemoteMount, main
+from rmount import RemoteMount
 from rmount.config import Remote
 from rmount.server import RemoteServer
 from rmount.utils import terminate, unmount

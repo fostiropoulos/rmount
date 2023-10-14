@@ -1,5 +1,5 @@
 from pathlib import Path
-from rmount import RemoteMount, Remote, S3
+from rmount import RemoteMount, S3
 
 
 if __name__ == "__main__":
