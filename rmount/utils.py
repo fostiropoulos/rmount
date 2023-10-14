@@ -43,27 +43,17 @@ def _clean_log_msg(msg: str):
     return msg
 
 
-# pylint: disable=broad-exception-caught
 def _handle_pipe(pipe, verbose: bool):
-    queue: multiprocessing.Queue = multiprocessing.Queue()
-    try:
-        with pipe:
-            while True:
-                read_proc = multiprocessing.Process(
-                    target=lambda q: q.put([pipe.readline().decode().strip("\n").strip(" ")]),
-                    args=(queue,),
-                )
-                read_proc.start()
-                read_proc.join(1)
-                msg = queue.get(timeout=1)[0]
-                if verbose and len(msg) > 0:
-                    msg = _clean_log_msg(msg)
-                    logger.debug("RClone: %s", msg)
-                else:
-                    break
-
-    except Exception:
-        ...
+    # NOTE this process does not get killed when there
+    # is an error raised in the main process.
+    # without this function rclone over-populates STDOUT and causes
+    # it to stall.
+    with pipe:
+        while True:
+            msg = pipe.readline().decode().strip("\n").strip(" ")
+            if verbose and len(msg) > 0:
+                msg = _clean_log_msg(msg)
+                logger.debug("RClone: %s", msg)
 
 
 def parse_pipes(process, verbose) -> tuple[multiprocessing.Process, multiprocessing.Process]:
