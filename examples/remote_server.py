@@ -10,6 +10,9 @@ if __name__ == "__main__":
     local_path = Path("/tmp/rmount-example")
     remote_path = Path("/tmp/test")
 
+    # If not using RemoteServer
+    # You will need to set-up ssh access to an external server
+    # https://ubuntu.com/server/docs/service-openssh
     with RemoteServer(
         local_path=local_path,
         public_key=public_key,
@@ -24,14 +27,10 @@ if __name__ == "__main__":
         mount = RemoteMount(config, remote_path, local_path)
 
         with mount:
-            local_path.joinpath("A").write_bytes(
-                random.randbytes(100_000_000)
-            )
+            local_path.joinpath("A").write_bytes(random.randbytes(100_000_000))
             # wait until the file synchronizes
             time.sleep(1)
-            subprocess.Popen(
-                s.ssh_command + f" ls -la {remote_path}", shell=True
-            )
+            subprocess.Popen(s.ssh_command + f" ls -la {remote_path}", shell=True)
     """
     If all goes well you should see something like:
 

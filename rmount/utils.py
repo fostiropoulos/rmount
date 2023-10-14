@@ -11,14 +11,12 @@ import typing
 from pathlib import Path
 
 logging.basicConfig(
-    format=(
-        "%(asctime)s %(levelname)-5s [%(filename)s:%(lineno)d]"
-        " %(message)s"
-    ),
+    format="%(asctime)s %(levelname)-5s [%(filename)s:%(lineno)d] %(message)s",
     datefmt="%Y-%m-%d:%H:%M:%S",
     level=logging.WARN,
 )
 logger = logging.getLogger("RMount")
+
 
 CFG_NAME = "RMount"
 CFG_TEMPLATE = """[{name}]\n{settings}"""
@@ -28,9 +26,7 @@ RCLONE_PATH: Path = Path(__file__).parent.joinpath("rclone")
 
 # initialization flag that checks for depedencies only once.
 _IS_INIT = False
-log_re = re.compile(
-    "[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} "
-)
+log_re = re.compile("[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} ")
 
 
 def _parse_args(args: tuple[typing.Any, ...]) -> list[str]:
@@ -48,6 +44,10 @@ def _clean_log_msg(msg: str):
 
 
 def _handle_pipe(pipe, verbose: bool):
+    # NOTE this process does not get killed when there
+    # is an error raised in the main process.
+    # without this function rclone over-populates STDOUT and causes
+    # it to stall.
     with pipe:
         while True:
             msg = pipe.readline().decode().strip("\n").strip(" ")
@@ -56,25 +56,17 @@ def _handle_pipe(pipe, verbose: bool):
                 logger.debug("RClone: %s", msg)
 
 
-def parse_pipes(
-    process, verbose
-) -> tuple[multiprocessing.Process, multiprocessing.Process]:
+def parse_pipes(process, verbose) -> tuple[multiprocessing.Process, multiprocessing.Process]:
     pipes = (
-        multiprocessing.Process(
-            target=_handle_pipe, args=(process.stderr, verbose)
-        ),
-        multiprocessing.Process(
-            target=_handle_pipe, args=(process.stdout, verbose)
-        ),
+        multiprocessing.Process(target=_handle_pipe, args=(process.stderr, verbose)),
+        multiprocessing.Process(target=_handle_pipe, args=(process.stdout, verbose)),
     )
     for pipe in pipes:
         pipe.start()
     return pipes
 
 
-def _execute(
-    *args: typing.Any, timeout: int | None = None
-) -> tuple[str, str]:
+def _execute(*args: typing.Any, timeout: int | None = None) -> tuple[str, str]:
     arg_list = _parse_args(args)
     try:
         proc = subprocess.run(
@@ -89,27 +81,19 @@ def _execute(
         error_out = proc.stderr.decode("utf-8")
         return std_out, error_out
     except subprocess.CalledProcessError as exc:
-        raise RuntimeError(
-            f"Could not execute command `{' '.join(arg_list)}`"
-        ) from exc
+        raise RuntimeError(f"Could not execute command `{' '.join(arg_list)}`") from exc
 
 
-def _execute_async(
-    *args, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-) -> subprocess.Popen:
+def _execute_async(*args, stdout=subprocess.PIPE, stderr=subprocess.PIPE) -> subprocess.Popen:
     cmd = _parse_args(args)
-    process = subprocess.Popen(  # pylint: disable=consider-using-with
-        cmd, stdout=stdout, stderr=stderr
-    )
+    process = subprocess.Popen(cmd, stdout=stdout, stderr=stderr)  # pylint: disable=consider-using-with
     return process
 
 
 def unmount(local_path: Path | str, timeout: int):
     try:
         # Pre-emptive unmount of the directory
-        _execute(
-            "fusermount", "-uz", f"{local_path}", timeout=timeout
-        )
+        _execute("fusermount", "-uz", f"{local_path}", timeout=timeout)
         for _ in range(timeout):
             if not is_mounted(local_path, timeout=timeout):
                 return True
@@ -153,17 +137,11 @@ def mount(
 def is_mounted(local_path, timeout: int):
     mountpoint_flag = False
     try:
-        message, _ = _execute(
-            "mountpoint", local_path, timeout=timeout
-        )
-        mountpoint_flag = message.strip("\n").endswith(
-            "is a mountpoint"
-        )
+        message, _ = _execute("mountpoint", local_path, timeout=timeout)
+        mountpoint_flag = message.strip("\n").endswith("is a mountpoint")
     except Exception:  # pylint: disable=broad-exception-caught
         exc = traceback.format_exc()
-        logger.error(
-            "Error calling `mountpoint` command: %s", message
-        )
+        logger.error("Error calling `mountpoint` command: %s", message)
         logger.debug(exc)
     return mountpoint_flag
 
@@ -178,9 +156,7 @@ def make_config(settings):
     return cfg
 
 
-def write_timestamp(
-    remote_path: Path, config_path: Path, timeout: int
-):
+def write_timestamp(remote_path: Path, config_path: Path, timeout: int):
     with tempfile.NamedTemporaryFile() as file:
         file.write(f"{time.time()}\n".encode("utf-8"))
         file.flush()
@@ -198,9 +174,7 @@ def write_timestamp(
         if len(stdout) > 0:
             logger.info(stdout)
         if len(stderr) > 0:
-            logger.warning(
-                "RClone Log: %s", stderr.strip("\n").strip(" ")
-            )
+            logger.warning("RClone Log: %s", stderr.strip("\n").strip(" "))
 
 
 def refresh_cache(timeout: int):
@@ -241,22 +215,16 @@ def _requirements_installed():
     local_dir = Path(__file__).parent
     try:
         message, _ = _execute("mountpoint", local_dir, timeout=5)
-        mountpoint_flag = message.strip("\n").endswith(
-            "is a mountpoint"
-        )
+        mountpoint_flag = message.strip("\n").endswith("is a mountpoint")
     except Exception as exc:
-        raise ImportError(
-            "Could not execute or find the `mountpoint` command"
-        ) from exc
+        raise ImportError("Could not execute or find the `mountpoint` command") from exc
     if mountpoint_flag:
         raise ImportError("`mountpoint` must be misconfigured")
 
     try:
         _execute("fusermount", "-uz", f"{local_dir}", timeout=5)
     except Exception as exc:
-        raise ImportError(
-            "Could not execute or find the `fusermount` command"
-        ) from exc
+        raise ImportError("Could not execute or find the `fusermount` command") from exc
     if is_mounted(local_dir, timeout=5):
         raise ImportError("`fusermount` must be misconfigured")
     return True

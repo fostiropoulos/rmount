@@ -1,4 +1,5 @@
 # RMount - Robust Remote Mount
+![](assets/mount.png)
 
 This is a robust remote mount wrapper around the mount utility [rclone](https://rclone.org/). The python-side implementation makes it possible to integrate rclone into your python application with pre-packaged rclone binaries (version v1.62.2). This is a ready-to-go solution without external dependencies for mounting a local directory to a remote storage provider such as AWS S3. RMount is robust to time-outs, connection drops, while it abstracts the details of integrating directly with the remote provider. **NOTE** Currently only supports Linux.
 
@@ -31,7 +32,7 @@ The above requirements are by default met on most Linux distributions such as Ub
 
 ## Usage
 
-You will first need to define your configuration object and then you can use `RemoteMount` with a context manager i.e. `with` or simply by calling `.mount()` and `.unmount()`. See below and [example](examples/run.py).
+You will first need to define your configuration object and then you can use `RemoteMount` with a context manager i.e. `with` or simply by calling `.mount()` and `.unmount()`. See below and [s3 example](examples/s3.py), [ssh example](examples/remote_server.py).
 ### AWS S3 Config
 
 [Set-up your access keys](https://aws.amazon.com/blogs/security/wheres-my-secret-access-key/)

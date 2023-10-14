@@ -1,5 +1,5 @@
 from pathlib import Path
-from rmount import RemoteMount, Remote, S3
+from rmount import RemoteMount, S3
 
 
 if __name__ == "__main__":
@@ -19,15 +19,6 @@ if __name__ == "__main__":
         secret_access_key="xxx",
         access_key_id="xxx",
         endpoint="https://storage.googleapis.com",
-    )
-
-    # You will need to set-up ssh access to the server
-    # https://ubuntu.com/server/docs/service-openssh
-    config = Remote(
-        host="localhost",
-        user="root",
-        port=22,
-        key_file=Path.home() / ".ssh" / "id_rsa",
     )
 
     local_path = Path("/tmp/s3")  # local directory

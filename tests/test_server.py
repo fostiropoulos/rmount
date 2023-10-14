@@ -78,6 +78,4 @@ if __name__ == "__main__":
     tmp_path.mkdir(exist_ok=True, parents=True)
 
     test_invalid_parameters(tmp_path)
-    test_run(
-        tmp_path=tmp_path, public_key_fn=_public_key, volume_name=None
-    )
+    test_run(tmp_path=tmp_path, public_key_fn=_public_key, volume_name=None)
