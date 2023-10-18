@@ -5,10 +5,13 @@ import multiprocessing
 import re
 import subprocess
 import tempfile
+import threading
 import time
 import traceback
 import typing
 from pathlib import Path
+
+from multiprocessing.synchronize import Event
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)-5s [%(filename)s:%(lineno)d] %(message)s",
@@ -43,27 +46,30 @@ def _clean_log_msg(msg: str):
     return msg
 
 
-def _handle_pipe(pipe, verbose: bool):
+def _handle_pipe(pipe, verbose: bool, run_event: Event):
     # NOTE this process does not get killed when there
     # is an error raised in the main process.
     # without this function rclone over-populates STDOUT and causes
     # it to stall.
     with pipe:
-        while True:
+        while run_event.is_set():
             msg = pipe.readline().decode().strip("\n").strip(" ")
             if verbose and len(msg) > 0:
                 msg = _clean_log_msg(msg)
                 logger.debug("RClone: %s", msg)
 
 
-def parse_pipes(process, verbose) -> tuple[multiprocessing.Process, multiprocessing.Process]:
+def parse_pipes(process, verbose) -> tuple[Event, Event]:
+    event_out, event_err = multiprocessing.Event(), multiprocessing.Event()
+    event_out.set()
+    event_err.set()
     pipes = (
-        multiprocessing.Process(target=_handle_pipe, args=(process.stderr, verbose)),
-        multiprocessing.Process(target=_handle_pipe, args=(process.stdout, verbose)),
+        threading.Thread(target=_handle_pipe, args=(process.stderr, verbose, event_out)),
+        threading.Thread(target=_handle_pipe, args=(process.stdout, verbose, event_err)),
     )
     for pipe in pipes:
         pipe.start()
-    return pipes
+    return event_out, event_err
 
 
 def _execute(*args: typing.Any, timeout: int | None = None) -> tuple[str, str]:

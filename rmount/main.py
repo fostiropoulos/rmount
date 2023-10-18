@@ -74,6 +74,31 @@ def _mount_callback(local_path: Path, timeout: int, is_alive_event: Event):  # n
     return
 
 
+def _is_alive(queue: Queue, local_path: Path, timeout: int):
+    file_flag = False
+    try:
+        # we do an _is_init check because if we try to access the
+        # filesystem before being ready, we can interrupt the process.
+        if local_path.joinpath(".rmount").exists():
+            last_alive = float(local_path.joinpath(".rmount").read_text())
+            file_flag = time.time() - last_alive < timeout * 2
+            logger.debug("Mountpoint last alive: %s", last_alive)
+    # pylint: disable=broad-exception-caught
+    except Exception:
+        exc_str = traceback.format_exc()
+        # error relating to `.rmount` be synchronously written to
+        if all(IGNORE_ERROR not in exc_str for IGNORE_ERROR in IGNORE_ERRORS):
+            logger.error(exc_str)
+
+    mountpoint_flag = is_mounted(local_path, timeout=timeout)
+    logger.debug(
+        "Mountpoint (active, valid): (%s,%s)",
+        mountpoint_flag,
+        file_flag,
+    )
+    queue.put(mountpoint_flag and file_flag)
+
+
 def is_alive(local_path: Path, timeout: int) -> bool:
     """
     is_alive checks whether there is an alive ``RemoteMount`` process in
@@ -92,32 +117,8 @@ def is_alive(local_path: Path, timeout: int) -> bool:
         Whether there is a ``RemoteMount`` running at `local_path`
     """
 
-    def _is_alive(queue):
-        file_flag = False
-        try:
-            # we do an _is_init check because if we try to access the
-            # filesystem before being ready, we can interrupt the process.
-            if local_path.joinpath(".rmount").exists():
-                last_alive = float(local_path.joinpath(".rmount").read_text())
-                file_flag = time.time() - last_alive < timeout * 2
-                logger.debug("Mountpoint last alive: %s", last_alive)
-        # pylint: disable=broad-exception-caught
-        except Exception:
-            exc_str = traceback.format_exc()
-            # error relating to `.rmount` be synchronously written to
-            if all(IGNORE_ERROR not in exc_str for IGNORE_ERROR in IGNORE_ERRORS):
-                logger.error(exc_str)
-
-        mountpoint_flag = is_mounted(local_path, timeout=timeout)
-        logger.debug(
-            "Mountpoint (active, valid): (%s,%s)",
-            mountpoint_flag,
-            file_flag,
-        )
-        queue.put(mountpoint_flag and file_flag)
-
     queue: Queue = Queue()
-    _is_alive_process = Process(target=_is_alive, args=(queue,))
+    _is_alive_process = Process(target=_is_alive, args=(queue, local_path, timeout))
     _is_alive_process.start()
     _is_alive_process.join(timeout=timeout)
     _is_alive_process.kill()
@@ -278,7 +279,7 @@ class _MountProcess:
         self.remote_path: Path = Path(f"{CFG_NAME}:{remote_path}")
         self.local_path = Path(local_path)
         self._process: subprocess.Popen | None = None
-        self._pipes: list[Process] | None = None
+        self._pipes: list[Event] | None = None
         self.mount()
 
     def mount(self):  # noqa: DOC201
@@ -404,7 +405,7 @@ class _MountProcess:
             unmount(self.local_path, timeout=self._timeout)
         if hasattr(self, "_pipes") and self._pipes is not None:
             for pipe in self._pipes:
-                pipe.kill()
+                pipe.clear()
 
     def __exit__(self, *args, **kwargs):
         self.kill()
