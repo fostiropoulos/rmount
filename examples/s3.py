@@ -7,18 +7,9 @@ if __name__ == "__main__":
     # https://aws.amazon.com/blogs/security/wheres-my-secret-access-key/
     config = S3(
         provider="AWS",
-        region="us-east-1",
-        secret_access_key="xxx",
-        access_key_id="xxx",
-    )
-
-    # secret key guide:
-    # https://cloud.google.com/storage/docs/authentication/managing-hmackeys
-    config = S3(
-        provider="GCS",
-        secret_access_key="xxx",
-        access_key_id="xxx",
-        endpoint="https://storage.googleapis.com",
+        region="us-east-2",
+        secret_access_key="U1dUEw6Vbp21F7nZFr0+ATu82wNKU0hdmTxyBCkf",
+        access_key_id="AKIAU5WVS5VGPAFDELIO",
     )
 
     local_path = Path("/tmp/s3")  # local directory
@@ -26,8 +17,3 @@ if __name__ == "__main__":
     mount = RemoteMount(config, remote_path, local_path)
     with mount:
         local_path.joinpath("foo").write_text("bar")
-
-    # equivalent
-    mount.mount()
-    local_path.joinpath("foo").write_text("bar")
-    mount.unmount()
