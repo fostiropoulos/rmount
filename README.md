@@ -33,6 +33,12 @@ The above requirements are by default met on most Linux distributions such as Ub
 ## Usage
 
 You will first need to define your configuration object and then you can use `RemoteMount` with a context manager i.e. `with` or simply by calling `.mount()` and `.unmount()`. See below and [s3 example](examples/s3.py), [ssh example](examples/remote_server.py).
+
+
+<a target="_blank" href="https://colab.research.google.com/github/fostiropoulos/rmount/examples/HPO.ipynb">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
+
 ### AWS S3 Config
 
 [Set-up your access keys](https://aws.amazon.com/blogs/security/wheres-my-secret-access-key/)
@@ -102,7 +108,7 @@ RemoteServer is a docker container running an SFTP server. The advantage of usin
 Assume you use `rmount` for the experiment You might want to provide access to the storage of the experiment data to several people you trust enough to get access to experiment data, e.g. `ABLATOR` dashboard, but at the same time you might not want them to be able to `ssh` into your main machine to have access to your personal files.
 
 ```python
-from rmount import RemoteServer
+from rmount.server import RemoteServer
 from pathlib import Path
 public_key = Path.home() / ".ssh" / "id_rsa.pub"
 private_key = Path.home() / ".ssh" / "id_rsa"

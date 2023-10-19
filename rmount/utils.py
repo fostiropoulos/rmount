@@ -231,6 +231,13 @@ def _requirements_installed():
         _execute("fusermount", "-uz", f"{local_dir}", timeout=5)
     except Exception as exc:
         raise ImportError("Could not execute or find the `fusermount` command") from exc
+
+    try:
+        _execute("fusermount3", "-uz", f"{local_dir}", timeout=5)
+    except Exception as exc:
+        raise ImportError(
+            "Could not execute or find the `fusermount3` command. Please use `apt-get install fuse3` or similar"
+        ) from exc
     if is_mounted(local_dir, timeout=5):
         raise ImportError("`fusermount` must be misconfigured")
     return True
