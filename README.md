@@ -35,7 +35,7 @@ The above requirements are by default met on most Linux distributions such as Ub
 You will first need to define your configuration object and then you can use `RemoteMount` with a context manager i.e. `with` or simply by calling `.mount()` and `.unmount()`. See below and [s3 example](examples/s3.py), [ssh example](examples/remote_server.py).
 
 
-<a target="_blank" href="https://colab.research.google.com/github/fostiropoulos/rmount/examples/HPO.ipynb">
+<a target="_blank" href="https://colab.research.google.com/github/fostiropoulos/rmount/blob/main/examples/s3.ipynb">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
 
