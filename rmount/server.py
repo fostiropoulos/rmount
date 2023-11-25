@@ -108,10 +108,10 @@ class RemoteServer:
     ----------
     local_path : Path | str | None
         The local path that can be used to access the contents of the ``RemoteServer``. Must be set
-        if `volume_name` is None
+        if ``volume_name`` is None
     volume_name : str | None
         The volume to  use to mount the docker container that can be used to access the contents of
-        the ``RemoteServer``. Must be set if `local_path` is None
+        the ``RemoteServer``. Must be set if ``local_path`` is None
     public_key : str | None
         The public key which allows access to the ``RemoteServer``.
         Must be set if `public_key_file` is None
@@ -122,12 +122,12 @@ class RemoteServer:
         The remote path that can be used to map to the local_path and access
         the contents of the ``RemoteServer``. When unspecified, it will be set
         the same as the local_path e.g.
-        `local_path:remote_path` -> `local_path:local_path`, by default None
+        ``local_path:remote_path`` -> ``local_path:local_path``, by default None
     ssh_user : str, optional
         the ssh-user that can be used to access the RemoteServer, by default "admin"
     container_name : str | None, optional
         The unique name of the container. RemoteServer will kill any other container
-        by the same name to avoid network conflicts, by default "rmount-ssh-server"
+        by the same name to avoid network conflicts, by default ``rmount-ssh-server``
     verbose : bool, optional
         Whether to print the output of the container to stdout, by default False
 
@@ -141,6 +141,7 @@ class RemoteServer:
     Examples
     ----------
     Connect to the SSH server
+
     >>> DEFAULT_PUB_KEY = Path.home() / ".ssh" / "id_rsa.pub"
     >>> server = RemoteServer(public_key_file=DEFAULT_PUB_KEY, local_path = "/tmp")
     >>> server.start()
@@ -149,7 +150,8 @@ class RemoteServer:
     ... ssh -p 2222 -o StrictHostKeyChecking=no admin@172.17.0.2
 
     To connect and test the server (while the script is running):
-    `$ ssh -p 2222 -o StrictHostKeyChecking=no admin@172.17.0.2`
+
+    ``$ ssh -p 2222 -o StrictHostKeyChecking=no admin@172.17.0.2``
 
 
     Raises
