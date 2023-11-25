@@ -28,7 +28,14 @@ jobs:
         sudo chmod 755 rmount/rclone
     - name: Build And Package for Linux
       run: |
-        make publish OS="manylinux1_x86_64"
+        make package OS="manylinux2014_x86_64"
+        make package OS="manylinux2014_i686"
+        make package OS="manylinux2014_aarch64"
+        make package OS="manylinux2014_armv7l"
+        make package OS="manylinux2014_ppc64"
+        make package OS="manylinux2014_ppc64le"
+        make package OS="manylinux2014_s390x"
+        make publish
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}

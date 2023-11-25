@@ -36,5 +36,5 @@ static-checks:
 	pylint ./rmount
 	mypy rmount
 
-publish: package
+publish:
 	twine upload dist/*.whl --verbose
