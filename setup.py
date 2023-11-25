@@ -3,7 +3,6 @@ from pathlib import Path
 import setuptools
 import os
 
-
 if os.name == "posix":  # Unix-like
     if os.uname().sysname == "Linux":
         shutil.copy(
@@ -15,7 +14,7 @@ else:
 
 setuptools.setup(
     name="rmount",
-    version="0.0.6",
+    version="0.0.7",
     author="Iordanis Fostiropoulos",
     author_email="mail@iordanis.me",
     description="A robust file-system mount to a remote storage.",
