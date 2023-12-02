@@ -243,6 +243,7 @@ def _requirements_installed():
         raise ImportError("`fusermount` must be misconfigured")
     return True
 
+
 if os.environ.get("RMOUNT_IGNORE_REQS") is not None:
     ...
 elif not _IS_INIT and _requirements_installed():
