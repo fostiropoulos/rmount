@@ -2,7 +2,6 @@
 Welcome to RMount's documentation!
 ==================================
 
-.. sidebar:: Right Sidebar Title
 
 .. image:: _static/mount.png
     :align: center
@@ -36,6 +35,7 @@ Navigate
 .. toctree::
     :maxdepth: 2
 
+    Source <https://github.com/fostiropoulos/rmount>
     install
     usage
     advanced_usage
