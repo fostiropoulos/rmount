@@ -30,7 +30,8 @@ python:
   install:
     - method: pip
       path: .
-
+      extra_requirements:
+        - server
 # python:
 #    install:
 #    - requirements: docs/requirements.txt
